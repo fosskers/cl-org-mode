@@ -13,10 +13,25 @@
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
+(defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 
 ;; --- Timestamps --- ;;
 
 ;; --- Text Markup --- ;;
+
+(defun line (offset)
+  (funcall (p:sep-end1 +consume-space+ #'words) offset))
+
+#+nil
+(p:parse #'line "Hello what a *fine* day!")
+#+nil
+(p:parse #'line "This is not*bold*.")
+#+nil
+(p:parse #'line "Markup at the *end*.")
+
+(defun words (offset)
+  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain)
+           offset))
 
 (defun bold (offset)
   (p:fmap (lambda (s) (make-bold :text s))
@@ -106,8 +121,6 @@
 #+nil
 (p:parse #'punct ",hello")
 
-;; TODO: 2025-08-30 Image and link.
-
 (defun link (offset)
   (p:fmap (lambda (list) (make-link :url (make-url :text (car list))
                                     :text (cadr list)))
@@ -125,18 +138,20 @@
 (defun image (offset)
   (funcall (p:between +bracket-open+
                       (p:between +bracket-open+
-                                 (lambda (off)
-                                   (multiple-value-bind (res next)
-                                       (funcall (p:take-while1 (lambda (c) (not (char= c #\])))) off)
-                                     (if (and (p:ok? res)
-                                              (or (string-ends-with? res ".jpg")
-                                                  (string-ends-with? res ".jpeg")
-                                                  (string-ends-with? res ".png")))
-                                         (values (make-image :url (make-url :text res)) next)
-                                         (p:fail off))))
+                                 #'url-of-image
                                  +bracket-close+)
                       +bracket-close+)
            offset))
+
+(defun url-of-image (offset)
+  (multiple-value-bind (res next)
+      (funcall (p:take-while1 (lambda (c) (not (char= c #\])))) offset)
+    (if (and (p:ok? res)
+             (or (string-ends-with? res ".jpg")
+                 (string-ends-with? res ".jpeg")
+                 (string-ends-with? res ".png")))
+        (values (make-image :url (make-url :text res)) next)
+        (p:fail offset))))
 
 #+nil
 (p:parse #'image "[[/path/to/img.jpeg]]")

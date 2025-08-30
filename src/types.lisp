@@ -147,6 +147,7 @@ by zero or more subsections."
 (defstruct punct
   (char nil :type character))
 
+;; FIXME: 2025-08-31 Maybe get rid of this wrapping to avoid allocation?
 (defstruct plain
   "A single word."
   (text nil :type string))
