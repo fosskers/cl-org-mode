@@ -6,10 +6,6 @@
 
 (in-package :org-mode)
 
-(deftype str ()
-  "A simple alias for brevity."
-  '(simple-array character (*)))
-
 (defstruct file
   "The contents of a complete `.org' with metadata."
   (metadata nil :type hash-table)
@@ -27,16 +23,16 @@ by zero or more subsections."
 
 (defstruct quote
   "A quote block."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct example
   "An example block."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct code
   "A code block."
   (lang nil :type language)
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct listing
   "Various kinds of bullet lists."
@@ -56,7 +52,7 @@ by zero or more subsections."
   (todo       nil :type (or null todo))
   (priority   nil :type (or null priority))
   (heading    nil :type (vector words))
-  (tags       nil :type (vector str))
+  (tags       nil :type (vector string))
   (closed     nil :type (or null timestamp))
   (deadline   nil :type (or null timestamp))
   (scheduled  nil :type (or null timestamp))
@@ -73,7 +69,7 @@ by zero or more subsections."
 
 *** TODO [#A] Eat lunch
 *** TODO [#B] Cure cancer"
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct item
   "A line in a listing. Can contain sublists."
@@ -123,39 +119,39 @@ by zero or more subsections."
 
 (defstruct url
   "The url portion of some link-like type."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct language
   "The programming language that some source code block was written in."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct bold
   "Text surrounded by *."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct italic
   "Text surrounded by /."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct highlight
   "TODO: 2025-08-30 I forget!"
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct underline
   "Text surrounded by _."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct verbatim
   "TODO: 2025-08-30 I forget!"
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct strike
   "Text surrounded by +."
-  (text nil :type str))
+  (text nil :type string))
 
 (defstruct punct
   (char nil :type character))
 
 (defstruct plain
   "A single word."
-  (text nil :type str))
+  (text nil :type string))
