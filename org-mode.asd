@@ -6,6 +6,7 @@
   :depends-on (:parcom)
   :serial t
   :components ((:module "src" :components ((:file "package")
+                                           (:file "types")
                                            (:file "parser"))))
   :description "An Emacs org-mode parser."
   :in-order-to ((test-op (test-op :org-mode/tests))))

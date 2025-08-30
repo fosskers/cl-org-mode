@@ -121,3 +121,22 @@
 (p:parse #'link "[[https://www.fosskers.ca][Site]]")
 #+nil
 (p:parse #'link "[[https://www.fosskers.ca]]")
+
+(defun image (offset)
+  (funcall (p:between +bracket-open+
+                      (p:between +bracket-open+
+                                 (lambda (off)
+                                   (multiple-value-bind (res next)
+                                       (funcall (p:take-while1 (lambda (c) (not (char= c #\])))) off)
+                                     (if (and (p:ok? res)
+                                              (or (string-ends-with? res ".jpg")
+                                                  (string-ends-with? res ".jpeg")
+                                                  (string-ends-with? res ".png")))
+                                         (values (make-image :url (make-url :text res)) next)
+                                         (p:fail off))))
+                                 +bracket-close+)
+                      +bracket-close+)
+           offset))
+
+#+nil
+(p:parse #'image "[[/path/to/img.jpeg]]")
