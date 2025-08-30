@@ -2,6 +2,9 @@
   (:use :cl)
   (:shadow #:quote #:block #:time)
   (:local-nicknames (#:p #:parcom))
+  ;; --- Text Markup --- ;;
+  (:export #:url #:url-text
+           #:link #:link-url #:link-text)
   (:documentation "An Emacs org-mode parser."))
 
 (in-package :org-mode)
@@ -9,7 +12,7 @@
 (defstruct file
   "The contents of a complete `.org' with metadata."
   (metadata nil :type hash-table)
-  (content nil :type content))
+  (document nil :type document))
 
 (defstruct document
   "A recursive org document. These are zero or more blocks of markup, followed
@@ -112,7 +115,8 @@ by zero or more subsections."
   '(or bold italic highlight underline verbatim strike link image punct plain))
 
 (defstruct link
-  (url nil :type url))
+  (url  nil :type url)
+  (text nil :type (or null string)))
 
 (defstruct image
   (url nil :type url))

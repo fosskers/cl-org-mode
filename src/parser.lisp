@@ -8,6 +8,11 @@
 (defparameter +equal+ (p:char #\=))
 (defparameter +under+ (p:char #\_))
 (defparameter +plus+  (p:char #\+))
+(defparameter +bracket-open+  (p:char #\[))
+(defparameter +bracket-close+ (p:char #\]))
+(defparameter +between-brackets+ (p:between +bracket-open+
+                                            (p:take-while1 (lambda (c) (not (char= c #\]))))
+                                            +bracket-close+))
 
 ;; --- Timestamps --- ;;
 
@@ -102,3 +107,17 @@
 (p:parse #'punct ",hello")
 
 ;; TODO: 2025-08-30 Image and link.
+
+(defun link (offset)
+  (p:fmap (lambda (list) (make-link :url (make-url :text (car list))
+                                    :text (cadr list)))
+          (funcall (p:between +bracket-open+
+                              (p:<*> +between-brackets+
+                                     (p:opt +between-brackets+))
+                              +bracket-close+)
+                   offset)))
+
+#+nil
+(p:parse #'link "[[https://www.fosskers.ca][Site]]")
+#+nil
+(p:parse #'link "[[https://www.fosskers.ca]]")

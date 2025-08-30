@@ -7,7 +7,8 @@
   :serial t
   :components ((:module "src" :components ((:file "package")
                                            (:file "parser"))))
-  :description "An Emacs org-mode parser.")
+  :description "An Emacs org-mode parser."
+  :in-order-to ((test-op (test-op :org-mode/tests))))
 
 (defsystem "org-mode/tests"
     :depends-on (:org-mode :parachute :parcom)
