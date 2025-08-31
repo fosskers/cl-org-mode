@@ -16,6 +16,11 @@
 (defparameter +tilde+ (p:char #\~))
 (defparameter +under+ (p:char #\_))
 (defparameter +zero+  (p:char #\0))
+(defparameter +scheduled+ (p:string "SCHEDULED:"))
+(defparameter +deadline+  (p:string "DEADLINE:"))
+(defparameter +closed+    (p:string "CLOSED:"))
+(defparameter +angle-open+  (p:char #\<))
+(defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
 (defparameter +octothorp+ (p:char #\#))
 (defparameter +bracket-open+  (p:char #\[))
@@ -27,14 +32,59 @@
 
 ;; --- Timestamps --- ;;
 
+(defun timestamps (offset)
+  "Parser: All things time-related that can appear one the same line."
+  (p:fmap (lambda (list) (apply #'append list))
+          (funcall (p:sep-end1 +consume-space+
+                               (p:alt (p:pmap (lambda (ts) (list :closed ts)) #'closed)
+                                      (p:pmap (lambda (ts) (list :scheduled ts)) #'scheduled)
+                                      (p:pmap (lambda (ts) (list :deadline ts)) #'deadline)))
+                   offset)))
+
+#+nil
+(p:parse #'timestamps "CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>")
+
+(defun scheduled (offset)
+  (funcall (*> +scheduled+
+               +consume-space+
+               (p:between +angle-open+
+                          #'timestamp
+                          +angle-close+))
+           offset))
+
+#+nil
+(p:parse #'scheduled "SCHEDULED: <2021-04-30 Fri>")
+#+nil
+(p:parse #'scheduled "SCHEDULED: <2021-04-30 Fri 13:00 .+1w -1d>")
+
+(defun deadline (offset)
+  (funcall (*> +deadline+
+               +consume-space+
+               (p:between +angle-open+
+                          #'timestamp
+                          +angle-close+))
+           offset))
+
+#+nil
+(p:parse #'deadline "DEADLINE: <2021-04-30 Fri>")
+
+(defun closed (offset)
+  (funcall (*> +closed+
+               +consume-space+
+               (p:between +bracket-open+
+                          #'timestamp
+                          +bracket-close+))
+           offset))
+
+#+nil
+(p:parse #'closed "CLOSED: [2021-04-30 Fri 12:34]")
+
 (defun timestamp (offset)
   (p:fmap (lambda (list)
             (destructuring-bind (day dow time repeat delay) list
               (make-timestamp :day day :day-of-week dow :time time :repeat repeat :delay delay)))
           (funcall (<*> #'d:local-date
-                        (*> +consume-space+
-                            (p:take-while (lambda (c) (not (or (char= c #\space)
-                                                               (char= c #\newline))))))
+                        (*> +consume-space+ (p:take-while #'p:ascii-letter?))
                         (p:opt (*> +consume-space+ #'d:simple-local-time))
                         (p:opt (*> +consume-space+ #'repeat))
                         (p:opt (*> +consume-space+ #'delay)))

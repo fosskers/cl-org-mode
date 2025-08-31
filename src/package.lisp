@@ -8,6 +8,9 @@
   (:export #:url #:url-text
            #:link #:link-url #:link-text
            #:image #:image-url)
+  ;; --- Timestamps --- ;;
+  (:export #:timestamp #:timestamp-day #:timestamp-day-of-week #:timestamp-time #:timestamp-repeat #:timestamp-delay
+           #:delay #:delay-mode #:delay-value #:delay-interval)
   (:documentation "An Emacs org-mode parser."))
 
 (in-package :org-mode)
