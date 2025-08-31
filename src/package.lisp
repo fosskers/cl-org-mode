@@ -2,7 +2,8 @@
   (:use :cl)
   (:shadow #:quote #:block #:time #:ratio)
   (:import-from :parcom #:<*> #:<* #:*> #:<$)
-  (:local-nicknames (#:p #:parcom))
+  (:local-nicknames (#:p #:parcom)
+                    (#:d #:parcom/datetime))
   ;; --- Text Markup --- ;;
   (:export #:url #:url-text
            #:link #:link-url #:link-text

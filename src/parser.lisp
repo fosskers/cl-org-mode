@@ -2,13 +2,20 @@
 
 ;; --- Static Parsers --- ;;
 
-(defparameter +star+  (p:char #\*))
-(defparameter +slash+ (p:char #\/))
-(defparameter +tilde+ (p:char #\~))
-(defparameter +equal+ (p:char #\=))
-(defparameter +under+ (p:char #\_))
-(defparameter +plus+  (p:char #\+))
+(defparameter +h+     (p:char #\h))
+(defparameter +d+     (p:char #\d))
+(defparameter +w+     (p:char #\w))
+(defparameter +m+     (p:char #\m))
+(defparameter +y+     (p:char #\y))
 (defparameter +colon+ (p:char #\:))
+(defparameter +dash+  (p:char #\-))
+(defparameter +equal+ (p:char #\=))
+(defparameter +plus+  (p:char #\+))
+(defparameter +slash+ (p:char #\/))
+(defparameter +star+  (p:char #\*))
+(defparameter +tilde+ (p:char #\~))
+(defparameter +under+ (p:char #\_))
+(defparameter +zero+  (p:char #\0))
 (defparameter +percent+ (p:char #\%))
 (defparameter +octothorp+ (p:char #\#))
 (defparameter +bracket-open+  (p:char #\[))
@@ -19,6 +26,60 @@
                                             +bracket-close+))
 
 ;; --- Timestamps --- ;;
+
+(defun timestamp (offset)
+  (p:fmap (lambda (list)
+            (destructuring-bind (day dow time repeat delay) list
+              (make-timestamp :day day :day-of-week dow :time time :repeat repeat :delay delay)))
+          (funcall (<*> #'d:local-date
+                        (*> +consume-space+
+                            (p:take-while (lambda (c) (not (or (char= c #\space)
+                                                               (char= c #\newline))))))
+                        (p:opt (*> +consume-space+ #'d:simple-local-time))
+                        (p:opt (*> +consume-space+ #'repeat))
+                        (p:opt (*> +consume-space+ #'delay)))
+                   offset)))
+
+#+nil
+(p:parse #'timestamp "2021-04-28 Wed 13:00 .+1w -1d")
+
+#+nil
+(p:parse #'timestamp "2025-08-31 So")
+
+(defun repeat (offset)
+  (p:fmap (lambda (list)
+            (destructuring-bind (mode value interval) list
+              (make-repeat :mode mode :value value :interval interval)))
+          (funcall (<*> (p:alt (<$ :from-today (p:string ".+"))
+                               (<$ :jump (p:string "++"))
+                               (<$ :single +plus+))
+                        #'p:unsigned
+                        #'interval)
+                   offset)))
+
+#+nil
+(p:parse #'repeat ".+1w")
+
+(defun delay (offset)
+  (p:fmap (lambda (list)
+            (destructuring-bind (mode value interval) list
+              (make-delay :mode mode :value value :interval interval)))
+          (funcall (<*> (p:alt (<$ :one (p:string "--"))
+                               (<$ :all +dash+))
+                        #'p:unsigned
+                        #'interval)
+                   offset)))
+
+#+nil
+(p:parse #'delay "--2d")
+
+(defun interval (offset)
+  (funcall (p:alt (<$ :hour  +h+)
+                  (<$ :day   +d+)
+                  (<$ :week  +w+)
+                  (<$ :month +m+)
+                  (<$ :year  +y+))
+           offset))
 
 ;; --- Headings --- ;;
 

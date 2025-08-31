@@ -101,24 +101,36 @@ caps."
 
 (defstruct timestamp
   "An org-mode timestamp. Must contain at least a year-month-day and the day of the week."
-  (day         nil :type day)
-  (day-of-week nil :type day-of-week)
-  (time        nil :type (or null time))
-  (repeat      nil :type (or null repeater))
+  (day         nil :type d:local-date)
+  (day-of-week nil :type string)
+  (time        nil :type (or null d:local-time))
+  (repeat      nil :type (or null repeat))
   (delay       nil :type (or null delay)))
 
-(defstruct day
-  (year  nil :type fixnum)
-  (month nil :type fixnum)
-  (day   nil :type fixnum))
+(defstruct repeat
+  "Repetition of a timestamp."
+  (mode     nil :type repeat-mode)
+  (value    nil :type fixnum)
+  (interval nil :type interval))
 
-(deftype day-of-week ()
-  '(member :monday :tuesday :wednesday :thursday :friday :saturday :sunday))
+(deftype repeat-mode ()
+  "The nature of the repetition."
+  '(member :single :jump :from-today))
 
-;; TODO: 2025-08-30 Implement! Probably these can come near-to-last.
-(deftype time ())
-(deftype repeater ())
-(deftype delay ())
+(deftype interval ()
+  "The timestamp repetition unit."
+  '(member :hour :day :week :month :year))
+
+(defstruct delay
+  "Delay the appearance of a timestamp in the agenda."
+  (mode     nil :type delay-mode)
+  (value    nil :type fixnum)
+  (interval nil :type interval))
+
+(deftype delay-mode ()
+  "When a repeater is also present, should the delay be for the first value or all
+of them?"
+  '(member :one :all))
 
 ;; --- Text Markup --- ;;
 

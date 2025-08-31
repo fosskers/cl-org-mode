@@ -3,7 +3,7 @@
   :author "Colin Woodbury <colin@fosskers.ca>"
   :license "MPL-2.0"
   :homepage "https://github.com/fosskers/cl-org-mode"
-  :depends-on (:parcom)
+  :depends-on (:parcom :parcom/datetime)
   :serial t
   :components ((:module "src" :components ((:file "package")
                                            (:file "types")
