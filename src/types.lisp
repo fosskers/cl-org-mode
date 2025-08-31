@@ -58,7 +58,8 @@ by zero or more subsections."
   (scheduled  nil :type (or null timestamp))
   ;; A timestamp for general events that are neither a DEADLINE nor SCHEDULED.
   (timestamp  nil :type (or null timestamp))
-  (properties nil :type hash-table))
+  ;; An assoc-list.
+  (properties nil :type list))
 
 (defstruct todo
   "A marker like TODO or DONE. These are customizable by the user, so we can't

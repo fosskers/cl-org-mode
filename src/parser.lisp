@@ -20,6 +20,8 @@
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
 (defparameter +closed+    (p:string "CLOSED:"))
+(defparameter +properties+ (p:string ":PROPERTIES:"))
+(defparameter +end+        (p:string ":END:"))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
@@ -27,6 +29,7 @@
 (defparameter +bracket-open+  (p:char #\[))
 (defparameter +bracket-close+ (p:char #\]))
 (defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
+(defparameter +consume-between-a-line+ (*> +consume-space+ +newline+ +consume-space+))
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
@@ -144,17 +147,17 @@
 
 (defun heading (offset)
   (p:fmap (lambda (list)
-            (destructuring-bind (todo priority text progress tags tss ts) list
+            (destructuring-bind (todo priority text progress tags tss ts ps) list
               (make-heading :todo todo
                             :priority priority
                             :text text
                             :progress progress
                             :tags (or tags (vector))
-                            :properties (make-hash-table)
                             :closed (getf tss :closed)
                             :deadline (getf tss :deadline)
                             :scheduled (getf tss :scheduled)
-                            :timestamp ts)))
+                            :timestamp ts
+                            :properties ps)))
           (funcall (<*> (*> #'bullets-of-heading
                             +consume-space+
                             (p:opt (<* #'todo (p:sneak #\space))))
@@ -162,16 +165,14 @@
                         (*> +consume-space+ #'text-of-heading)
                         (*> +consume-space+ (p:opt #'progress))
                         (*> +consume-space+ (p:opt #'tags))
-                        (p:opt (*> +consume-space+
-                                   +newline+
-                                   +consume-space+
+                        (p:opt (*> +consume-between-a-line+
                                    #'timestamps))
-                        (p:opt (*> +consume-space+
-                                   +newline+
-                                   +consume-space+
+                        (p:opt (*> +consume-between-a-line+
                                    (p:between +angle-open+
                                               #'timestamp
-                                              +angle-close+))))
+                                              +angle-close+)))
+                        (p:opt (*> +consume-between-a-line+
+                                   #'properties)))
                    offset)))
 
 #+nil
@@ -184,7 +185,11 @@
 #+nil
 (p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:
 CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>
-<2022-01-01>")
+<2022-01-01>
+:PROPERTIES:
+:Yes: Fun
+:END:
+")
 
 (defun bullets-of-heading (offset)
   "Parser: Just skips over the *."
@@ -264,6 +269,26 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 
 #+nil
 (p:parse #'tags ":foo:bar:baz:")
+
+(defun properties (offset)
+  "Parser: A PROPERTIES drawer."
+  (funcall (*> +properties+
+               +consume-between-a-line+
+               (<* (p:sep-end1 +consume-between-a-line+
+                               (p:pair (p:between +colon+
+                                                  (p:take-while1 (lambda (c) (not (char= c #\:))))
+                                                  +colon+)
+                                       (*> +consume-space+
+                                           (p:take-while1 (lambda (c) (not (char= c #\newline)))))))
+                   +end+))
+           offset))
+
+#+nil
+(p:parse #'properties ":PROPERTIES:
+:Yes: Fun
+:Thing: Value of it
+:END:
+")
 
 ;; --- Text Markup --- ;;
 
