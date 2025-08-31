@@ -28,11 +28,50 @@
 (defparameter +octothorp+ (p:char #\#))
 (defparameter +bracket-open+  (p:char #\[))
 (defparameter +bracket-close+ (p:char #\]))
+(defparameter +quote-open+ (p:alt (p:string "#+BEGIN_QUOTE") (p:string "#+begin_quote")))
+(defparameter +quote-close+ (p:alt (p:string "#+END_QUOTE") (p:string "#+end_quote")))
+(defparameter +example-open+ (p:alt (p:string "#+BEGIN_EXAMPLE") (p:string "#+begin_example")))
+(defparameter +example-close+ (p:alt (p:string "#+END_EXAMPLE") (p:string "#+end_example")))
 (defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 (defparameter +consume-between-a-line+ (*> +consume-space+ +newline+ +consume-space+))
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
+
+;; --- Documents and Sections --- ;;
+
+;; --- Blocks --- ;;
+
+;; FIXME: 2025-09-01 Account for internal markup?
+(defun quote (offset)
+  "Parser: A quote block."
+  (funcall (p:between (*> +quote-open+ +newline+)
+                      (p:sep-end1 (*> +newline+ (p:not +quote-close+))
+                                  (p:take-while (lambda (c) (not (char= c #\newline)))))
+                      (*> +newline+ +quote-close+))
+           offset))
+
+#+nil
+(p:parse #'quote "#+begin_quote
+人生遍路なり
+
+同行二人
+#+end_quote")
+
+(defun example (offset)
+  "Parser: An example block."
+  (funcall (p:between (*> +example-open+ +newline+)
+                      (p:sep-end1 (*> +newline+ (p:not +example-close+))
+                                  (p:take-while (lambda (c) (not (char= c #\newline)))))
+                      (*> +newline+ +example-close+))
+           offset))
+
+#+nil
+(p:parse #'example "#+begin_example
+The first thing you need to do.
+
+Now the second thing.
+#+end_example")
 
 ;; --- Timestamps --- ;;
 
@@ -47,14 +86,6 @@
 
 #+nil
 (p:parse #'timestamps "CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>")
-
-;; TODO: 2025-08-31 Start here. You can now use `timestamps' to supplement the
-;; `heading' parser and optionally parse extra timestamps. After that would be
-;; property drawers. Then actually parsing the body of a `document'.
-;;
-;; Recall that a document forms a tree of sections further documents, so
-;; sections at the same `*' depth need to be parsed as part of the same final
-;; vector. The children need to parse deeper down.
 
 (defun scheduled (offset)
   (funcall (*> +scheduled+
