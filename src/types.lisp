@@ -43,20 +43,28 @@ by zero or more subsections."
 
 (defstruct section
   "A section or subsection, marked by a heading line and followed recursively by other documents."
+  (heading  nil :type heading)
+  (document nil :type document))
+
+(defstruct heading
+  "The top line of a `section' with associated metadata."
   (todo       nil :type (or null todo))
   (priority   nil :type (or null priority))
-  (heading    nil :type (vector words))
+  (text       nil :type (vector words))
+  (progress   nil :type (or null progress))
   (tags       nil :type (vector string))
   (closed     nil :type (or null timestamp))
   (deadline   nil :type (or null timestamp))
   (scheduled  nil :type (or null timestamp))
   ;; A timestamp for general events that are neither a DEADLINE nor SCHEDULED.
   (timestamp  nil :type (or null timestamp))
-  (properties nil :type hash-table)
-  (document   nil :type document))
+  (properties nil :type hash-table))
 
-(deftype todo ()
-  '(member :todo :done))
+(defstruct todo
+  "A marker like TODO or DONE. These are customizable by the user, so we can't
+prescribe what they should be. We at least expect them to be one word, and all
+caps."
+  (text nil :type string))
 
 (defstruct priority
   "A priority value, usually associated with a TODO marking, as in:
@@ -64,6 +72,19 @@ by zero or more subsections."
 *** TODO [#A] Eat lunch
 *** TODO [#B] Cure cancer"
   (text nil :type string))
+
+(deftype progress ()
+  "Completion progress of a checklist within a section."
+  '(or percentage ratio))
+
+(defstruct percentage
+  "A box like [37%]."
+  (number nil :type fixnum))
+
+(defstruct ratio
+  "A box like [1/2]."
+  (numerator   nil :type fixnum)
+  (denominator nil :type fixnum))
 
 (defstruct item
   "A line in a listing. Can contain sublists."

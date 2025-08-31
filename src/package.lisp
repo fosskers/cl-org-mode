@@ -1,6 +1,7 @@
 (defpackage org-mode
   (:use :cl)
-  (:shadow #:quote #:block #:time)
+  (:shadow #:quote #:block #:time #:ratio)
+  (:import-from :parcom #:<*> #:<* #:*> #:<$)
   (:local-nicknames (#:p #:parcom))
   ;; --- Text Markup --- ;;
   (:export #:url #:url-text

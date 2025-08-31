@@ -8,14 +8,121 @@
 (defparameter +equal+ (p:char #\=))
 (defparameter +under+ (p:char #\_))
 (defparameter +plus+  (p:char #\+))
+(defparameter +colon+ (p:char #\:))
+(defparameter +percent+ (p:char #\%))
+(defparameter +octothorp+ (p:char #\#))
 (defparameter +bracket-open+  (p:char #\[))
 (defparameter +bracket-close+ (p:char #\]))
+(defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
-(defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 
 ;; --- Timestamps --- ;;
+
+;; --- Headings --- ;;
+
+(defun heading (offset)
+  (p:fmap (lambda (list)
+            (destructuring-bind (todo priority text progress tags) list
+              (make-heading :todo todo
+                            :priority priority
+                            :text text
+                            :progress progress
+                            :tags (or tags (vector))
+                            :properties (make-hash-table))))
+          (funcall (<*> (*> #'bullets-of-heading
+                            +consume-space+
+                            (p:opt (<* #'todo (p:sneak #\space))))
+                        (*> +consume-space+ (p:opt #'priority))
+                        (*> +consume-space+ #'text-of-heading)
+                        (*> +consume-space+ (p:opt #'progress))
+                        (*> +consume-space+ (p:opt #'tags)))
+                   offset)))
+
+#+nil
+(p:parse #'heading "* Simplest")
+
+#+nil
+(p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:")
+
+(defun bullets-of-heading (offset)
+  "Parser: Just skips over the *."
+  (funcall (p:consume (lambda (c) (char= c #\*))) offset))
+
+#+nil
+(p:parse #'bullets-of-heading "*** Hello")
+
+(defun todo (offset)
+  "Parser: A single capital word."
+  (p:fmap (lambda (s) (make-todo :text s))
+          (funcall (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                   (char<= #\A c #\Z))))
+                   offset)))
+
+#+nil
+(p:parse #'todo "TODO")
+
+(defun priority (offset)
+  (p:fmap (lambda (s) (make-priority :text s))
+          (funcall (p:between +bracket-open+
+                              (*> +octothorp+
+                                  (p:take-while1 (lambda (c) (not (char= c #\])))))
+                              +bracket-close+)
+                   offset)))
+
+#+nil
+(p:parse #'priority "[#A]")
+
+(defun text-of-heading (offset)
+  (p:fmap (lambda (list) (coerce list 'vector))
+          (funcall (p:sep-end1 (*> +consume-space+
+                                   (p:not (p:alt #'progress #'tags)))
+                               #'words)
+                   offset)))
+
+#+nil
+(p:parse #'text-of-heading "Hello there")
+#+nil
+(p:parse #'text-of-heading "Fix the code [1/2] :bug:")
+
+(defun progress (offset)
+  (funcall (p:alt #'percentage #'ratio) offset))
+
+(defun percentage (offset)
+  "Parser: A box like [37%]."
+  (p:fmap (lambda (n) (make-percentage :number n))
+          (funcall (p:between +bracket-open+
+                              (<* #'p:unsigned +percent+)
+                              +bracket-close+)
+                   offset)))
+
+#+nil
+(p:parse #'percentage "[37%]")
+
+(defun ratio (offset)
+  "Parser: A box like [1/2]."
+  (p:fmap (lambda (list) (make-ratio :numerator (car list)
+                                     :denominator (cadr list)))
+          (funcall (p:between +bracket-open+
+                              (<*> #'p:unsigned
+                                   (*> +slash+ #'p:unsigned))
+                              +bracket-close+)
+                   offset)))
+
+#+nil
+(p:parse #'ratio "[1/2]")
+
+(defun tags (offset)
+  "Parser: Tags like :foo:bar:baz:"
+  ;; FIXME: 2025-08-31 Probably needs to be a (vector string).
+  (p:fmap (lambda (list) (coerce list 'vector))
+          (funcall (*> +colon+
+                       (p:sep-end1 +colon+ (p:take-while1 (lambda (c) (not (char= c #\:))))))
+                   offset)))
+
+#+nil
+(p:parse #'tags ":foo:bar:baz:")
 
 ;; --- Text Markup --- ;;
 
@@ -125,8 +232,8 @@
   (p:fmap (lambda (list) (make-link :url (make-url :text (car list))
                                     :text (cadr list)))
           (funcall (p:between +bracket-open+
-                              (p:<*> +between-brackets+
-                                     (p:opt +between-brackets+))
+                              (<*> +between-brackets+
+                                   (p:opt +between-brackets+))
                               +bracket-close+)
                    offset)))
 
