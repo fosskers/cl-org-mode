@@ -16,6 +16,7 @@
 (defparameter +tilde+ (p:char #\~))
 (defparameter +under+ (p:char #\_))
 (defparameter +zero+  (p:char #\0))
+(defparameter +newline+ (p:char #\newline))
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
 (defparameter +closed+    (p:string "CLOSED:"))
@@ -43,6 +44,14 @@
 
 #+nil
 (p:parse #'timestamps "CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>")
+
+;; TODO: 2025-08-31 Start here. You can now use `timestamps' to supplement the
+;; `heading' parser and optionally parse extra timestamps. After that would be
+;; property drawers. Then actually parsing the body of a `document'.
+;;
+;; Recall that a document forms a tree of sections further documents, so
+;; sections at the same `*' depth need to be parsed as part of the same final
+;; vector. The children need to parse deeper down.
 
 (defun scheduled (offset)
   (funcall (*> +scheduled+
@@ -135,27 +144,47 @@
 
 (defun heading (offset)
   (p:fmap (lambda (list)
-            (destructuring-bind (todo priority text progress tags) list
+            (destructuring-bind (todo priority text progress tags tss ts) list
               (make-heading :todo todo
                             :priority priority
                             :text text
                             :progress progress
                             :tags (or tags (vector))
-                            :properties (make-hash-table))))
+                            :properties (make-hash-table)
+                            :closed (getf tss :closed)
+                            :deadline (getf tss :deadline)
+                            :scheduled (getf tss :scheduled)
+                            :timestamp ts)))
           (funcall (<*> (*> #'bullets-of-heading
                             +consume-space+
                             (p:opt (<* #'todo (p:sneak #\space))))
                         (*> +consume-space+ (p:opt #'priority))
                         (*> +consume-space+ #'text-of-heading)
                         (*> +consume-space+ (p:opt #'progress))
-                        (*> +consume-space+ (p:opt #'tags)))
+                        (*> +consume-space+ (p:opt #'tags))
+                        (p:opt (*> +consume-space+
+                                   +newline+
+                                   +consume-space+
+                                   #'timestamps))
+                        (p:opt (*> +consume-space+
+                                   +newline+
+                                   +consume-space+
+                                   (p:between +angle-open+
+                                              #'timestamp
+                                              +angle-close+))))
                    offset)))
 
 #+nil
 (p:parse #'heading "* Simplest")
 
 #+nil
-(p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:")
+(p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:
+<2022-01-01>")
+
+#+nil
+(p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:
+CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>
+<2022-01-01>")
 
 (defun bullets-of-heading (offset)
   "Parser: Just skips over the *."
@@ -229,7 +258,8 @@
   ;; FIXME: 2025-08-31 Probably needs to be a (vector string).
   (p:fmap (lambda (list) (coerce list 'vector))
           (funcall (*> +colon+
-                       (p:sep-end1 +colon+ (p:take-while1 (lambda (c) (not (char= c #\:))))))
+                       (p:sep-end1 +colon+ (p:take-while1 (lambda (c) (not (or (char= c #\:)
+                                                                               (char= c #\newline)))))))
                    offset)))
 
 #+nil

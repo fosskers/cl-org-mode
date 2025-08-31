@@ -27,3 +27,11 @@
   (finish (p:parse #'o::timestamp "2025-08-31 So"))
   (let ((ts (p:parse #'o::timestamp "2021-04-28 Wed 13:00 .+1w -1d")))
     (is = 1 (o:delay-value (o:timestamp-delay ts)))))
+
+(define-test headings)
+
+(define-test tags
+  :parent headings
+  (is equalp #("foo" "bar" "baz") (p:parse #'o::tags ":foo:bar:baz:"))
+  (is equalp #("foo" "bar" "baz") (p:parse #'o::tags ":foo:bar:baz:
+SCHEDULED: <2025-09-01>")))
