@@ -45,11 +45,13 @@
 ;; FIXME: 2025-09-01 Account for internal markup?
 (defun quote (offset)
   "Parser: A quote block."
-  (funcall (p:between (*> +quote-open+ +newline+)
-                      (p:sep-end1 (*> +newline+ (p:not +quote-close+))
-                                  (p:take-while (lambda (c) (not (char= c #\newline)))))
-                      (*> +newline+ +quote-close+))
-           offset))
+  (p:fmap (lambda (list) (make-quote :text (coerce list 'vector)))
+          (funcall (p:between (*> +quote-open+ +newline+)
+                              (p:sep-end +newline+
+                                         (*> (p:not +quote-close+)
+                                             (p:take-while (lambda (c) (not (char= c #\newline))))))
+                              +quote-close+)
+                   offset)))
 
 #+nil
 (p:parse #'quote "#+begin_quote
@@ -58,19 +60,29 @@
 同行二人
 #+end_quote")
 
+#+nil
+(p:parse #'quote "#+begin_quote
+#+end_quote")
+
 (defun example (offset)
   "Parser: An example block."
-  (funcall (p:between (*> +example-open+ +newline+)
-                      (p:sep-end1 (*> +newline+ (p:not +example-close+))
-                                  (p:take-while (lambda (c) (not (char= c #\newline)))))
-                      (*> +newline+ +example-close+))
-           offset))
+  (p:fmap (lambda (list) (make-example :text (coerce list 'vector)))
+          (funcall (p:between (*> +example-open+ +newline+)
+                              (p:sep-end +newline+
+                                         (*> (p:not +example-close+)
+                                             (p:take-while (lambda (c) (not (char= c #\newline))))))
+                              +example-close+)
+                   offset)))
 
 #+nil
 (p:parse #'example "#+begin_example
 The first thing you need to do.
 
 Now the second thing.
+#+end_example")
+
+#+nil
+(p:parse #'example "#+begin_example
 #+end_example")
 
 ;; --- Timestamps --- ;;

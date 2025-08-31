@@ -17,11 +17,11 @@ by zero or more subsections."
 
 (defstruct quote
   "A quote block."
-  (text nil :type string))
+  (text nil :type (vector string)))
 
 (defstruct example
   "An example block."
-  (text nil :type string))
+  (text nil :type (vector string)))
 
 (defstruct code
   "A code block."
