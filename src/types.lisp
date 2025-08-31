@@ -25,8 +25,10 @@ by zero or more subsections."
 
 (defstruct code
   "A code block."
-  (lang nil :type language)
-  (text nil :type string))
+  (lang nil :type string)
+  ;; An association list.
+  (vars nil :type list)
+  (text nil :type (vector string)))
 
 (defstruct listing
   "Various kinds of bullet lists."
@@ -148,10 +150,6 @@ of them?"
 
 (defstruct url
   "The url portion of some link-like type."
-  (text nil :type string))
-
-(defstruct language
-  "The programming language that some source code block was written in."
   (text nil :type string))
 
 (defstruct bold

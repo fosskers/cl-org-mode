@@ -16,6 +16,7 @@
 (defparameter +tilde+ (p:char #\~))
 (defparameter +under+ (p:char #\_))
 (defparameter +zero+  (p:char #\0))
+(defparameter +space+ (p:char #\space))
 (defparameter +newline+ (p:char #\newline))
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
@@ -32,6 +33,8 @@
 (defparameter +quote-close+ (p:alt (p:string "#+END_QUOTE") (p:string "#+end_quote")))
 (defparameter +example-open+ (p:alt (p:string "#+BEGIN_EXAMPLE") (p:string "#+begin_example")))
 (defparameter +example-close+ (p:alt (p:string "#+END_EXAMPLE") (p:string "#+end_example")))
+(defparameter +code-open+ (p:alt (p:string "#+BEGIN_SRC") (p:string "#+begin_src")))
+(defparameter +code-close+ (p:alt (p:string "#+END_SRC") (p:string "#+end_src")))
 (defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 (defparameter +consume-between-a-line+ (*> +consume-space+ +newline+ +consume-space+))
 (defparameter +between-brackets+ (p:between +bracket-open+
@@ -84,6 +87,44 @@ Now the second thing.
 #+nil
 (p:parse #'example "#+begin_example
 #+end_example")
+
+(defun code (offset)
+  "Parser: An example block."
+  (p:fmap (lambda (list)
+            (destructuring-bind (lang vars code) list
+              (make-code :lang lang :vars vars :text (coerce code 'vector))))
+          (funcall (p:between (*> +code-open+ +consume-space+)
+                              (<*> (p:take-while (lambda (c) (not (or (char= c #\space)
+                                                                      (char= c #\newline)))))
+                                   (p:opt (*> +consume-space+ #'variables))
+                                   (*> +newline+
+                                       (p:sep-end +newline+
+                                                  (*> (p:not +code-close+)
+                                                      (p:take-while (lambda (c) (not (char= c #\newline))))))))
+                              +code-close+)
+                   offset)))
+
+#+nil
+(p:parse #'code "#+begin_src lisp :results verbatim :exports both
+(+ 1 1)
+
+(+ 1 1)
+#+end_src")
+
+;; FIXME: 2025-09-01 Support any Lisp symbol for the value, including sexps. At
+;; the moment it just assumes any normal text.
+(defun variables (offset)
+  "Parser: Variables of a src block, like ':results verbatim'."
+  (funcall (p:sep-end1 (*> +space+ +consume-space+)
+                       (p:pair (*> +colon+
+                                   (p:take-while1 (lambda (c) (not (char= c #\space)))))
+                               (*> +consume-space+
+                                   (p:take-while1 (lambda (c) (not (or (char= c #\space)
+                                                                       (char= c #\newline))))))))
+           offset))
+
+#+nil
+(p:parse #'variables ":results verbatim :exports both")
 
 ;; --- Timestamps --- ;;
 
