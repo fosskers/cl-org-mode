@@ -37,11 +37,32 @@
 (defparameter +code-close+ (p:alt (p:string "#+END_SRC") (p:string "#+end_src")))
 (defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 (defparameter +consume-between-a-line+ (*> +consume-space+ +newline+ +consume-space+))
+(defparameter +consume-junk+ (p:consume #'p:space?))
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
 
 ;; --- Documents and Sections --- ;;
+
+(defun document (offset)
+  "Paser: Many blocks and any subsections of deeper depth."
+  (p:fmap (lambda (list) (make-document :blocks (coerce (car list) 'vector)
+                                        :sections (coerce (cadr list) 'vector)))
+          (funcall (<*> (p:sep-end +newline+ #'block)
+                        (p:sep-end +newline+ #'section))
+                   offset)))
+
+(defun section (offset)
+  "Parser: A heading and any subsequent content."
+  (p:fmap (lambda (list) (make-section :heading (car list) :document (cadr list)))
+          (funcall (<*> #'heading
+                        (*> +consume-junk+ #'document))
+                   offset)))
+
+#+nil
+(p:parse #'section "* Grand Plans
+
+Eloquent thoughts.")
 
 ;; --- Blocks --- ;;
 
