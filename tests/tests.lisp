@@ -35,3 +35,23 @@
   (is equalp #("foo" "bar" "baz") (p:parse #'o::tags ":foo:bar:baz:"))
   (is equalp #("foo" "bar" "baz") (p:parse #'o::tags ":foo:bar:baz:
 SCHEDULED: <2025-09-01>")))
+
+(define-test bullets
+  :parent headings
+  (is = 3 (p:parse #'o::bullets-of-heading "*** Hello"))
+  (fail (p:parse #'o::bullets-of-heading "Hello")))
+
+(define-test blocks)
+
+(define-test paragraphs
+  :parent blocks
+  (is string= "A" (o:plain-text (car (p:parse #'o::line "A
+B"))))
+  (is = 6 (length (o:paragraph-words (p:parse #'o::paragraph "First line.
+Second line.
+Third line.
+
+Fourth line - shouldn't parse!"))))
+  (is = 2 (length (o:paragraph-words (p:parse #'o::paragraph "Last line.
+*** A header!
+Paragraph of next section.")))))

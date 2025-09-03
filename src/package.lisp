@@ -4,10 +4,13 @@
   (:import-from :parcom #:<*> #:<* #:*> #:<$)
   (:local-nicknames (#:p #:parcom)
                     (#:d #:parcom/datetime))
+  ;; --- Blocks --- ;;
+  (:export #:paragraph #:paragraph-words)
   ;; --- Text Markup --- ;;
   (:export #:url #:url-text
            #:link #:link-url #:link-text
-           #:image #:image-url)
+           #:image #:image-url
+           #:plain #:plain-text)
   ;; --- Timestamps --- ;;
   (:export #:timestamp #:timestamp-day #:timestamp-day-of-week #:timestamp-time #:timestamp-repeat #:timestamp-delay
            #:delay #:delay-mode #:delay-value #:delay-interval)

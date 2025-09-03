@@ -1,5 +1,5 @@
 (defsystem "org-mode"
-    :version "0.0.0"
+  :version "0.0.0"
   :author "Colin Woodbury <colin@fosskers.ca>"
   :license "MPL-2.0"
   :homepage "https://github.com/fosskers/cl-org-mode"
@@ -12,6 +12,7 @@
   :in-order-to ((test-op (test-op :org-mode/tests))))
 
 (defsystem "org-mode/tests"
-    :depends-on (:org-mode :parachute :parcom)
+  :depends-on (:org-mode :parachute :parcom)
   :components ((:module "tests" :components ((:file "tests"))))
   :perform (test-op (op c) (symbol-call :parachute :test :org-mode/tests)))
+

@@ -45,6 +45,38 @@
 
 ;; --- Blocks --- ;;
 
+;; TODO: 2025-09-01 Start here. Parse a block in general. Handle lists and
+;; tables later. Then do the recursive `section' and `document' parsing, which
+;; you can take care of with a custom lambda cache for both that stores lambdas
+;; in vectors, whose indices correspond to the depth of the subsection we're
+;; trying to parse. The first time we reach a new depth, allocate a new lambda
+;; and add it to the vector. Subsequent attempts will reuse the allocated one.
+(defun block (offset)
+  (funcall (p:alt #'quote #'example #'code #'paragraph) offset))
+
+(defun paragraph (offset)
+  "A single body of text which runs until a double-newline or a header is
+encountered."
+  (p:fmap (lambda (lists) (make-paragraph :words (coerce (apply #'append lists) 'vector)))
+          (funcall (p:sep-end1 +newline+
+                               (*> (p:not #'heading) #'line))
+                   offset)))
+
+#+nil
+(p:parse #'paragraph "Single line.")
+
+#+nil
+(p:parse #'paragraph "First line.
+Second line.
+Third line.
+
+Fourth line - shouldn't parse!")
+
+#+nil
+(p:parse #'paragraph "Last line.
+*** A header!
+Paragraph of next section.")
+
 ;; FIXME: 2025-09-01 Account for internal markup?
 (defun quote (offset)
   "Parser: A quote block."
@@ -260,6 +292,9 @@ Now the second thing.
                    offset)))
 
 #+nil
+(p:parse #'heading "Not a heading!")
+
+#+nil
 (p:parse #'heading "* Simplest")
 
 #+nil
@@ -277,7 +312,7 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 
 (defun bullets-of-heading (offset)
   "Parser: Just skips over the *."
-  (funcall (p:consume (lambda (c) (char= c #\*))) offset))
+  (funcall (*> (p:sneak #\*) (p:consume (lambda (c) (char= c #\*)))) offset))
 
 #+nil
 (p:parse #'bullets-of-heading "*** Hello")
@@ -385,10 +420,17 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 (p:parse #'line "This is not*bold*.")
 #+nil
 (p:parse #'line "Markup at the *end*.")
+#+nil
+(p:parse #'line "This should only parse the first line
+and not the second.")
 
 (defun words (offset)
   (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain)
            offset))
+
+;; FIXME: 2025-09-04 There are certainly bugs here involving line breaks. Markup
+;; can stretch over line breaks, but only one at a time. A paragraph break (two
+;; newlines) stops the markup. Will definitely need unit tests for that.
 
 (defun bold (offset)
   (p:fmap (lambda (s) (make-bold :text s))
