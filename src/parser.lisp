@@ -44,34 +44,58 @@
 
 ;; --- Documents and Sections --- ;;
 
-(defun document (offset)
-  "Paser: Many blocks and any subsections of deeper depth."
-  (p:fmap (lambda (list) (make-document :blocks (coerce (car list) 'vector)
-                                        :sections (coerce (cadr list) 'vector)))
-          (funcall (<*> (p:sep-end +newline+ #'block)
-                        (p:sep-end +newline+ #'section))
-                   offset)))
+;; TODO: 2025-09-17 Start here. Start testing. You might have all the basic
+;; pieces together already.
 
-(defun section (offset)
+(defun document (stars)
+  "Parser: Many blocks and any subsections of deeper depth."
+  (lambda (offset)
+    (funcall (p:ap (lambda (blocks sections)
+                     (make-document :blocks (coerce blocks 'vector)
+                                    :sections (coerce sections 'vector)))
+                   (p:sep-end +newline+ #'block)
+                   (*> +consume-junk+
+                       ;; NOTE: 2025-09-17 There was originally a `sep-end'
+                       ;; here, but it turned out that deeper steps already
+                       ;; consume all the junk between major blocks of text, so
+                       ;; we couldn't reliably expect there to be a newline here
+                       ;; to separate the sections. Hence this was relaxed to
+                       ;; just a `many'.
+                       (p:many (section (1+ stars)))))
+             offset)))
+
+(defun section (stars)
   "Parser: A heading and any subsequent content."
-  (p:fmap (lambda (list) (make-section :heading (car list) :document (cadr list)))
-          (funcall (<*> #'heading
-                        (*> +consume-junk+ #'document))
-                   offset)))
+  (lambda (offset)
+    (funcall (p:ap (lambda (head doc) (make-section :heading head :document doc))
+                   (depth-sensitive-heading stars)
+                   (*> +consume-junk+ (document stars)))
+             offset)))
 
 #+nil
-(p:parse #'section "* Grand Plans
+(draw-doc-tree (p:parse (document 0) "* Grand Plans
 
-Eloquent thoughts.")
+Eloquent thoughts.
+
+** Details
+
+Minute descriptions.
+
+Extra things. A second paragraph!
+
+*** Three deep
+
+** Addendum
+
+Extra things.
+
+* Back to the top
+* Nothing in between
+
+Yes."))
 
 ;; --- Blocks --- ;;
 
-;; TODO: 2025-09-01 Start here. Parse a block in general. Handle lists and
-;; tables later. Then do the recursive `section' and `document' parsing, which
-;; you can take care of with a custom lambda cache for both that stores lambdas
-;; in vectors, whose indices correspond to the depth of the subsection we're
-;; trying to parse. The first time we reach a new depth, allocate a new lambda
-;; and add it to the vector. Subsequent attempts will reuse the allocated one.
 (defun block (offset)
   (funcall (p:alt #'quote #'example #'code #'paragraph) offset))
 
@@ -282,10 +306,23 @@ Now the second thing.
 
 ;; --- Headings --- ;;
 
+;; TODO: 2025-09-16 Create a vector-based cache for the inner lambdas here.
+(defun depth-sensitive-heading (stars)
+  "A variant of `heading' which knows how deep it should be parsing."
+  (lambda (offset)
+    (multiple-value-bind (res next) (heading offset)
+      (cond ((p:failure? res) (p:fail next))
+            ((not (= stars (heading-depth res))) (p:fail offset))
+            (t (values res next))))))
+
+#+nil
+(p:parse (depth-sensitive-heading 2) "* Simplest")
+
 (defun heading (offset)
   (p:fmap (lambda (list)
-            (destructuring-bind (todo priority text progress tags tss ts ps) list
-              (make-heading :todo todo
+            (destructuring-bind (depth todo priority text progress tags tss ts ps) list
+              (make-heading :depth depth
+                            :todo todo
                             :priority priority
                             :text text
                             :progress progress
@@ -295,9 +332,9 @@ Now the second thing.
                             :scheduled (getf tss :scheduled)
                             :timestamp ts
                             :properties ps)))
-          (funcall (<*> (*> #'bullets-of-heading
-                            +consume-space+
-                            (p:opt (<* #'todo (p:sneak #\space))))
+          (funcall (<*> (<* #'bullets-of-heading
+                            +consume-space+)
+                        (p:opt (<* #'todo (p:sneak #\space)))
                         (*> +consume-space+ (p:opt #'priority))
                         (*> +consume-space+ #'text-of-heading)
                         (*> +consume-space+ (p:opt #'progress))
@@ -333,7 +370,9 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 
 (defun bullets-of-heading (offset)
   "Parser: Just skips over the *."
-  (funcall (*> (p:sneak #\*) (p:consume (lambda (c) (char= c #\*)))) offset))
+  (multiple-value-bind (res next) (funcall (p:consume1 (lambda (c) (char= c #\*))) offset)
+    (cond ((p:failure? res) (p:fail offset))
+          (t (values (- next offset) next)))))
 
 #+nil
 (p:parse #'bullets-of-heading "*** Hello")

@@ -50,6 +50,7 @@ by zero or more subsections."
 
 (defstruct heading
   "The top line of a `section' with associated metadata."
+  (depth      nil :type fixnum)
   (todo       nil :type (or null todo))
   (priority   nil :type (or null priority))
   (text       nil :type (vector words))
@@ -183,3 +184,41 @@ of them?"
 (defstruct plain
   "A single word."
   (text nil :type string))
+
+;; --- Generics --- ;;
+
+(defgeneric text (obj)
+  (:documentation "The plain text contents of some otherwise wrapped thing."))
+
+(defmethod text ((link link)) (link-text link))
+(defmethod text ((url url)) (url-text url))
+(defmethod text ((bold bold)) (bold-text bold))
+(defmethod text ((italic italic)) (italic-text italic))
+(defmethod text ((highlight highlight)) (highlight-text highlight))
+(defmethod text ((underline underline)) (underline-text underline))
+(defmethod text ((verbatim verbatim)) (verbatim-text verbatim))
+(defmethod text ((strike strike)) (strike-text strike))
+(defmethod text ((plain plain)) (plain-text plain))
+(defmethod text ((todo todo)) (todo-text todo))
+(defmethod text ((priority priority)) (priority-text priority))
+
+;; --- Utilities --- ;;
+
+(defun draw-doc-tree (doc)
+  "Draw the basic structure of a parsed `document' tree."
+  (labels ((recur (d depth)
+             (loop :for sec :across (document-sections d)
+                   :do (progn (format t "~,,v,'-@a" depth "")
+                              (draw-words (heading-text (section-heading sec)))
+                              (format t "~%")
+                              (recur (section-document sec) (1+ depth))))))
+    (recur doc 1)
+    (format t "~%")))
+
+#+nil
+(format nil "~,,v,'-@a" 3 #\a)
+
+(defun draw-words (words &optional (stream t))
+  "Rudimentary rendering of the text of some `words'."
+  (loop :for word :across words
+        :do (format stream "~a " (text word))))
