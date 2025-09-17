@@ -167,19 +167,18 @@ Now the second thing.
 
 (defun code (offset)
   "Parser: An example block."
-  (p:fmap (lambda (list)
-            (destructuring-bind (lang vars code) list
-              (make-code :lang lang :vars vars :text (coerce code 'vector))))
-          (funcall (p:between (*> +code-open+ +consume-space+)
-                              (<*> (p:take-while (lambda (c) (not (or (char= c #\space)
-                                                                      (char= c #\newline)))))
-                                   (p:opt (*> +consume-space+ #'variables))
-                                   (*> +newline+
-                                       (p:sep-end +newline+
-                                                  (*> (p:not +code-close+)
-                                                      (p:take-while (lambda (c) (not (char= c #\newline))))))))
-                              +code-close+)
-                   offset)))
+  (funcall (p:between (*> +code-open+ +consume-space+)
+                      (p:ap (lambda (lang vars code)
+                              (make-code :lang lang :vars vars :text (coerce code 'vector)))
+                            (p:take-while (lambda (c) (not (or (char= c #\space)
+                                                               (char= c #\newline)))))
+                            (p:opt (*> +consume-space+ #'variables))
+                            (*> +newline+
+                                (p:sep-end +newline+
+                                           (*> (p:not +code-close+)
+                                               (p:take-while (lambda (c) (not (char= c #\newline))))))))
+                      +code-close+)
+           offset))
 
 #+nil
 (p:parse #'code "#+begin_src lisp :results verbatim :exports both
@@ -253,15 +252,14 @@ Now the second thing.
 (p:parse #'closed "CLOSED: [2021-04-30 Fri 12:34]")
 
 (defun timestamp (offset)
-  (p:fmap (lambda (list)
-            (destructuring-bind (day dow time repeat delay) list
-              (make-timestamp :day day :day-of-week dow :time time :repeat repeat :delay delay)))
-          (funcall (<*> #'d:local-date
-                        (*> +consume-space+ (p:take-while #'p:ascii-letter?))
-                        (p:opt (*> +consume-space+ #'d:simple-local-time))
-                        (p:opt (*> +consume-space+ #'repeat))
-                        (p:opt (*> +consume-space+ #'delay)))
-                   offset)))
+  (funcall (p:ap (lambda (day dow time repeat delay)
+                   (make-timestamp :day day :day-of-week dow :time time :repeat repeat :delay delay))
+                 #'d:local-date
+                 (*> +consume-space+ (p:take-while #'p:ascii-letter?))
+                 (p:opt (*> +consume-space+ #'d:simple-local-time))
+                 (p:opt (*> +consume-space+ #'repeat))
+                 (p:opt (*> +consume-space+ #'delay)))
+           offset))
 
 #+nil
 (p:parse #'timestamp "2021-04-28 Wed 13:00 .+1w -1d")
@@ -270,28 +268,26 @@ Now the second thing.
 (p:parse #'timestamp "2025-08-31 So")
 
 (defun repeat (offset)
-  (p:fmap (lambda (list)
-            (destructuring-bind (mode value interval) list
-              (make-repeat :mode mode :value value :interval interval)))
-          (funcall (<*> (p:alt (<$ :from-today (p:string ".+"))
-                               (<$ :jump (p:string "++"))
-                               (<$ :single +plus+))
-                        #'p:unsigned
-                        #'interval)
-                   offset)))
+  (funcall (p:ap (lambda (mode value interval)
+                   (make-repeat :mode mode :value value :interval interval))
+                 (p:alt (<$ :from-today (p:string ".+"))
+                        (<$ :jump (p:string "++"))
+                        (<$ :single +plus+))
+                 #'p:unsigned
+                 #'interval)
+           offset))
 
 #+nil
 (p:parse #'repeat ".+1w")
 
 (defun delay (offset)
-  (p:fmap (lambda (list)
-            (destructuring-bind (mode value interval) list
-              (make-delay :mode mode :value value :interval interval)))
-          (funcall (<*> (p:alt (<$ :one (p:string "--"))
-                               (<$ :all +dash+))
-                        #'p:unsigned
-                        #'interval)
-                   offset)))
+  (funcall (p:ap (lambda (mode value interval)
+                   (make-delay :mode mode :value value :interval interval))
+                 (p:alt (<$ :one (p:string "--"))
+                        (<$ :all +dash+))
+                 #'p:unsigned
+                 #'interval)
+           offset))
 
 #+nil
 (p:parse #'delay "--2d")
@@ -319,35 +315,34 @@ Now the second thing.
 (p:parse (depth-sensitive-heading 2) "* Simplest")
 
 (defun heading (offset)
-  (p:fmap (lambda (list)
-            (destructuring-bind (depth todo priority text progress tags tss ts ps) list
-              (make-heading :depth depth
-                            :todo todo
-                            :priority priority
-                            :text text
-                            :progress progress
-                            :tags (or tags (vector))
-                            :closed (getf tss :closed)
-                            :deadline (getf tss :deadline)
-                            :scheduled (getf tss :scheduled)
-                            :timestamp ts
-                            :properties ps)))
-          (funcall (<*> (<* #'bullets-of-heading
-                            +consume-space+)
-                        (p:opt (<* #'todo (p:sneak #\space)))
-                        (*> +consume-space+ (p:opt #'priority))
-                        (*> +consume-space+ #'text-of-heading)
-                        (*> +consume-space+ (p:opt #'progress))
-                        (*> +consume-space+ (p:opt #'tags))
-                        (p:opt (*> +consume-between-a-line+
-                                   #'timestamps))
-                        (p:opt (*> +consume-between-a-line+
-                                   (p:between +angle-open+
-                                              #'timestamp
-                                              +angle-close+)))
-                        (p:opt (*> +consume-between-a-line+
-                                   #'properties)))
-                   offset)))
+  (funcall (p:ap (lambda (depth todo priority text progress tags tss ts ps)
+                   (make-heading :depth depth
+                                 :todo todo
+                                 :priority priority
+                                 :text text
+                                 :progress progress
+                                 :tags (or tags (vector))
+                                 :closed (getf tss :closed)
+                                 :deadline (getf tss :deadline)
+                                 :scheduled (getf tss :scheduled)
+                                 :timestamp ts
+                                 :properties ps))
+                 (<* #'bullets-of-heading
+                     +consume-space+)
+                 (p:opt (<* #'todo (p:sneak #\space)))
+                 (*> +consume-space+ (p:opt #'priority))
+                 (*> +consume-space+ #'text-of-heading)
+                 (*> +consume-space+ (p:opt #'progress))
+                 (*> +consume-space+ (p:opt #'tags))
+                 (p:opt (*> +consume-between-a-line+
+                            #'timestamps))
+                 (p:opt (*> +consume-between-a-line+
+                            (p:between +angle-open+
+                                       #'timestamp
+                                       +angle-close+)))
+                 (p:opt (*> +consume-between-a-line+
+                            #'properties)))
+           offset))
 
 #+nil
 (p:parse #'heading "Not a heading!")
@@ -426,13 +421,12 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 
 (defun ratio (offset)
   "Parser: A box like [1/2]."
-  (p:fmap (lambda (list) (make-ratio :numerator (car list)
-                                     :denominator (cadr list)))
-          (funcall (p:between +bracket-open+
-                              (<*> #'p:unsigned
-                                   (*> +slash+ #'p:unsigned))
-                              +bracket-close+)
-                   offset)))
+  (funcall (p:between +bracket-open+
+                      (p:ap (lambda (num denom) (make-ratio :numerator num :denominator denom))
+                            #'p:unsigned
+                            (*> +slash+ #'p:unsigned))
+                      +bracket-close+)
+           offset))
 
 #+nil
 (p:parse #'ratio "[1/2]")
@@ -581,13 +575,14 @@ and not the second.")
 (p:parse #'punct ",hello")
 
 (defun link (offset)
-  (p:fmap (lambda (list) (make-link :url (make-url :text (car list))
-                                    :text (cadr list)))
-          (funcall (p:between +bracket-open+
-                              (<*> +between-brackets+
-                                   (p:opt +between-brackets+))
-                              +bracket-close+)
-                   offset)))
+  (funcall (p:between +bracket-open+
+                      (p:ap (lambda (url text)
+                              (make-link :url (make-url :text url)
+                                         :text text))
+                            +between-brackets+
+                            (p:opt +between-brackets+))
+                      +bracket-close+)
+           offset))
 
 #+nil
 (p:parse #'link "[[https://www.fosskers.ca][Site]]")
@@ -606,6 +601,7 @@ and not the second.")
   (multiple-value-bind (res next)
       (funcall (p:take-while1 (lambda (c) (not (char= c #\])))) offset)
     (if (and (p:ok? res)
+             ;; FIXME: 2025-09-18 Support more image types.
              (or (string-ends-with? res ".jpg")
                  (string-ends-with? res ".jpeg")
                  (string-ends-with? res ".png")))

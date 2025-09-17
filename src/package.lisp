@@ -1,9 +1,11 @@
 (defpackage org-mode
   (:use :cl)
   (:shadow #:quote #:block #:time #:ratio)
-  (:import-from :parcom #:<*> #:<* #:*> #:<$)
+  (:import-from :parcom #:<* #:*> #:<$)
   (:local-nicknames (#:p #:parcom)
                     (#:d #:parcom/datetime))
+  ;; --- Generics --- ;;
+  (:export #:text)
   ;; --- Blocks --- ;;
   (:export #:paragraph #:paragraph-words)
   ;; --- Text Markup --- ;;
