@@ -23,6 +23,7 @@
 (defparameter +closed+    (p:string "CLOSED:"))
 (defparameter +properties+ (p:string ":PROPERTIES:"))
 (defparameter +end+        (p:string ":END:"))
+(defparameter +label-start+ (p:string "#+"))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
@@ -42,11 +43,98 @@
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
 
+;; --- Whole Files --- ;;
+
+(defun file (offset)
+  "Parser: An entire .org file."
+  (funcall (p:ap (lambda (meta doc) (make-file :metadata meta :document doc))
+                 #'metadata
+                 (*> +consume-junk+ (document 0)))
+           offset))
+
+;; TODO: 2025-09-18 Start here. After parsing this, move on to parsing the
+;; labels on source blocks (and result blocks), then do tables entirely.
+
+(defun metadata (offset)
+  "Parser: All extra information at the top of the file."
+  (funcall (p:ap (lambda (comments props pairs)
+                   (make-metadata :comments (coerce comments 'vector)
+                                  :properties props
+                                  :metadata pairs))
+                 (*> +consume-junk+ (p:sep-end +newline+ #'comment))
+                 (*> +consume-junk+ (p:opt #'properties))
+                 (*> +consume-junk+ #'metadata-kv-pairs))
+           offset))
+
+#+nil
+(p:parse #'metadata "#+title: 2025")
+
+#+nil
+(p:parse #'metadata "
+# foo
+# bar
+
+:PROPERTIES:
+:ID:       666c8e46-356f-40c5-9c07-e355b890f0a8
+:END:
+
+#+title: Fun Article
+#+filetags: writeup
+")
+
+(defun metadata-kv-pairs (offset)
+  "Parser: All the key-value pairs at the top of the file."
+  (p:fmap (lambda (list)
+            (let ((ht (make-hash-table :test #'equal)))
+              (dolist (pair list)
+                (setf (gethash (car pair) ht) (cdr pair)))
+              ht))
+          (funcall (p:sep-end +newline+ #'kv-pair) offset)))
+
+#+nil
+(p:parse #'metadata-kv-pairs "#+title: great
+#+date: 2025-09-19
+#+author: Colin
+
+Content")
+
+(defun comment (offset)
+  ;; FIXME: 2025-09-19 Should this proactively trim whitespace off the end?
+  (p:fmap (lambda (text) (make-comment :text text))
+          (funcall (*> (p:not #'label)
+                       +octothorp+
+                       (p:take-while (lambda (c) (not (char= c #\newline)))))
+                   offset)))
+
+#+nil
+(p:parse #'comment "# hello")
+#+nil
+(p:parse #'comment "#+hello: not a comment!")
+
+(defun label (offset)
+  "Parser: The key of some key-value pair. Used at the top level, but also on
+tables and source blocks."
+  (funcall (*> +label-start+
+               (<* (p:take-while1 (lambda (c) (not (char= c #\:))))
+                   +colon+))
+           offset))
+
+#+nil
+(p:parse #'label "#+name: the100")
+
+(defun kv-pair (offset)
+  (funcall (p:ap #'cons
+                 #'label
+                 (*> +consume-space+
+                     (p:take-while (lambda (c) (not (char= c #\newline))))))
+           offset))
+
+#+nil
+(p:parse #'kv-pair "#+name: table")
+
 ;; --- Documents and Sections --- ;;
 
-;; TODO: 2025-09-17 Start here. Start testing. You might have all the basic
-;; pieces together already.
-
+;; FIXME: 2025-09-18 Account for comments!
 (defun document (stars)
   "Parser: Many blocks and any subsections of deeper depth."
   (lambda (offset)
@@ -165,6 +253,8 @@ Now the second thing.
 (p:parse #'example "#+begin_example
 #+end_example")
 
+;; FIXME: 2025-09-18 This needs to include an optional "name" key-value pair, as
+;; well as a RESULTS block.
 (defun code (offset)
   "Parser: An example block."
   (funcall (p:between (*> +code-open+ +consume-space+)

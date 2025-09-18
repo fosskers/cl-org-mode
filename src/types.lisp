@@ -2,14 +2,24 @@
 
 (defstruct file
   "The contents of a complete `.org' with metadata."
-  (metadata nil :type hash-table)
+  (metadata nil :type metadata)
   (document nil :type document))
+
+(defstruct metadata
+  "All extra content at the top of a file."
+  (comments   nil :type (vector comment))
+  (properties nil :type list)
+  (metadata   nil :type hash-table))
 
 (defstruct document
   "A recursive org document. These are zero or more blocks of markup, followed
 by zero or more subsections."
   (blocks   nil :type (vector block))
   (sections nil :type (vector section)))
+
+(defstruct comment
+  "An as-is line that nonetheless must be parsed."
+  (text nil :type string))
 
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
@@ -201,6 +211,7 @@ of them?"
 (defmethod text ((plain plain)) (plain-text plain))
 (defmethod text ((todo todo)) (todo-text todo))
 (defmethod text ((priority priority)) (priority-text priority))
+(defmethod text ((comment comment)) (comment-text comment))
 
 ;; --- Utilities --- ;;
 

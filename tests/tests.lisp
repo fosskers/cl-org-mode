@@ -55,3 +55,8 @@ Fourth line - shouldn't parse!"))))
   (is = 2 (length (o:paragraph-words (p:parse #'o::paragraph "Last line.
 *** A header!
 Paragraph of next section.")))))
+
+(define-test comments
+  :parent blocks
+  (finish (p:parse #'o::comment "# hello"))
+  (fail (p:parse #'o::comment "#+hello: not a comment!")))
