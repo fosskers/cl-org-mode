@@ -23,7 +23,7 @@ by zero or more subsections."
 
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
-  '(or quote example code listing table paragraph))
+  '(or quote example code result listing table paragraph))
 
 (defstruct quote
   "A quote block."
@@ -34,11 +34,17 @@ by zero or more subsections."
   (text nil :type (vector string)))
 
 (defstruct code
-  "A code block."
+  "A src code block."
+  (name nil :type (or null string))
   (lang nil :type string)
   ;; An association list.
   (vars nil :type list)
   (text nil :type (vector string)))
+
+(defstruct result
+  "The result of executing a `src' block."
+  (name nil :type (or null string))
+  (text nil :type (or (vector string) example)))
 
 (defstruct listing
   "Various kinds of bullet lists."
@@ -212,6 +218,8 @@ of them?"
 (defmethod text ((todo todo)) (todo-text todo))
 (defmethod text ((priority priority)) (priority-text priority))
 (defmethod text ((comment comment)) (comment-text comment))
+(defmethod text ((code code)) (code-text code))
+(defmethod text ((result result)) (result-text result))
 
 ;; --- Utilities --- ;;
 

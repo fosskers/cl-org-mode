@@ -24,6 +24,7 @@
 (defparameter +properties+ (p:string ":PROPERTIES:"))
 (defparameter +end+        (p:string ":END:"))
 (defparameter +label-start+ (p:string "#+"))
+(defparameter +name+ (p:string "#+name: "))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
@@ -253,22 +254,38 @@ Now the second thing.
 (p:parse #'example "#+begin_example
 #+end_example")
 
-;; FIXME: 2025-09-18 This needs to include an optional "name" key-value pair, as
-;; well as a RESULTS block.
 (defun code (offset)
-  "Parser: An example block."
-  (funcall (p:between (*> +code-open+ +consume-space+)
-                      (p:ap (lambda (lang vars code)
-                              (make-code :lang lang :vars vars :text (coerce code 'vector)))
-                            (p:take-while (lambda (c) (not (or (char= c #\space)
-                                                               (char= c #\newline)))))
-                            (p:opt (*> +consume-space+ #'variables))
-                            (*> +newline+
-                                (p:sep-end +newline+
-                                           (*> (p:not +code-close+)
-                                               (p:take-while (lambda (c) (not (char= c #\newline))))))))
-                      +code-close+)
+  "Parser: A src code block."
+  (funcall (p:ap (lambda (name lang vars code)
+                   (make-code :name name
+                              :lang lang
+                              :vars vars
+                              :text (coerce code 'vector)))
+                 (p:opt (*> +name+
+                            (<* (p:take-while1 (lambda (c) (not (char= c #\newline))))
+                                +newline+)))
+                 (*> +code-open+
+                     +consume-space+
+                     (p:take-while (lambda (c) (not (or (char= c #\space)
+                                                        (char= c #\newline))))))
+                 (p:opt (*> +consume-space+ #'variables))
+                 (*> +newline+
+                     (<* (p:sep-end +newline+
+                                    (*> (p:not +code-close+)
+                                        (p:take-while (lambda (c) (not (char= c #\newline))))))
+                         +code-close+)))
            offset))
+
+#+nil
+(p:parse #'code "#+begin_src lisp
+(+ 1 1)
+#+end_src")
+
+#+nil
+(p:parse #'code "#+name: foo
+#+begin_src lisp
+(+ 1 1)
+#+end_src")
 
 #+nil
 (p:parse #'code "#+begin_src lisp :results verbatim :exports both
