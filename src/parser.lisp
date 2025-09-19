@@ -24,6 +24,7 @@
 (defparameter +properties+ (p:string ":PROPERTIES:"))
 (defparameter +end+        (p:string ":END:"))
 (defparameter +label-start+ (p:string "#+"))
+(defparameter +results-start+ (p:string "#+RESULTS:"))
 (defparameter +name+ (p:string "#+name: "))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
@@ -43,6 +44,9 @@
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
+(defparameter +take1-til-end+ (p:take-while1 (lambda (c) (not (char= c #\newline)))))
+(defparameter +take1-til-break+ (p:take-while1 (lambda (c) (not (or (char= c #\space)
+                                                                    (char= c #\newline))))))
 
 ;; --- Whole Files --- ;;
 
@@ -262,7 +266,7 @@ Now the second thing.
                               :vars vars
                               :text (coerce code 'vector)))
                  (p:opt (*> +name+
-                            (<* (p:take-while1 (lambda (c) (not (char= c #\newline))))
+                            (<* +take1-til-end+
                                 +newline+)))
                  (*> +code-open+
                      +consume-space+
@@ -272,7 +276,7 @@ Now the second thing.
                  (*> +newline+
                      (<* (p:sep-end +newline+
                                     (*> (p:not +code-close+)
-                                        (p:take-while (lambda (c) (not (char= c #\newline))))))
+                                        +take1-til-end+))
                          +code-close+)))
            offset))
 
@@ -293,6 +297,38 @@ Now the second thing.
 
 (+ 1 1)
 #+end_src")
+
+(defun result (offset)
+  "Parser: The RESULTS block that can follow a src block."
+  (funcall (p:ap (lambda (name text) (make-result :name name :text text))
+                 (*> +results-start+
+                     +consume-space+
+                     (p:opt +take1-til-break+))
+                 (*> +newline+
+                     (p:alt #'example
+                            (p:ap (lambda (text) (coerce text 'vector))
+                                  (p:sep-end +newline+ +take1-til-end+)))))
+           offset))
+
+#+nil
+(p:parse #'result "#+RESULTS: sum
+: 4")
+
+#+nil
+(p:parse #'result "#+RESULTS:
+: 4")
+
+#+nil
+(p:parse #'result "#+RESULTS:
+4")
+
+#+nil
+(p:parse #'result "#+RESULTS:
+#+begin_example
+0
+1
+3
+#+end_example")
 
 ;; FIXME: 2025-09-01 Support any Lisp symbol for the value, including sexps. At
 ;; the moment it just assumes any normal text.
