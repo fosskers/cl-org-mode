@@ -146,7 +146,7 @@ tables and source blocks."
     (funcall (p:ap (lambda (blocks sections)
                      (make-document :blocks (coerce blocks 'vector)
                                     :sections (coerce sections 'vector)))
-                   (p:sep-end +newline+ #'block)
+                   (p:sep-end +consume-junk+ #'block)
                    (*> +consume-junk+
                        ;; NOTE: 2025-09-17 There was originally a `sep-end'
                        ;; here, but it turned out that deeper steps already
@@ -190,7 +190,7 @@ Yes."))
 ;; --- Blocks --- ;;
 
 (defun block (offset)
-  (funcall (p:alt #'quote #'example #'code #'paragraph) offset))
+  (funcall (p:alt #'quote #'example #'code #'result #'paragraph) offset))
 
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is

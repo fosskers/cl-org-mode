@@ -60,3 +60,10 @@ Paragraph of next section.")))))
   :parent blocks
   (finish (p:parse #'o::comment "# hello"))
   (fail (p:parse #'o::comment "#+hello: not a comment!")))
+
+(define-test files)
+
+(define-test parsing-files
+  :parent files
+  (finish (o:from-file "tests/empty.org"))
+  (finish (o:from-file "tests/src.org")))

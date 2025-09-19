@@ -4,6 +4,8 @@
   (:import-from :parcom #:<* #:*> #:<$)
   (:local-nicknames (#:p #:parcom)
                     (#:d #:parcom/datetime))
+  ;; --- Entry --- ;;
+  (:export #:from-string #:from-file)
   ;; --- Generics --- ;;
   (:export #:text)
   ;; --- Blocks --- ;;
@@ -20,6 +22,18 @@
 
 (in-package :org-mode)
 
+;; --- Entry --- ;;
+
+(defun from-string (str)
+  "Parse an entire org file from a string."
+  (p:parse (<* #'file #'p:eof) str))
+
+(defun from-file (path)
+  "Parse an entire org file given a path to it."
+  (from-string (string-from-file path)))
+
+;; --- Utilities --- ;;
+
 (defun string-starts-with? (s prefix &key (from 0))
   (string= prefix s :start2 from :end2 (min (+ from (length prefix))
                                             (length s))))
@@ -32,3 +46,12 @@
 
 #+nil
 (string-ends-with? "hello" "lo")
+
+(declaim (ftype (function ((or string pathname)) (simple-array character (*))) string-from-file))
+(defun string-from-file (path)
+  "Read the contents of a file into a string."
+  (with-open-file (stream path :direction :input :element-type 'character)
+    (with-output-to-string (out)
+      (loop :for c := (read-char stream nil :eof)
+            :until (eq c :eof)
+            :do (write-char c out)))))
