@@ -17,6 +17,7 @@
 (defparameter +under+ (p:char #\_))
 (defparameter +zero+  (p:char #\0))
 (defparameter +space+ (p:char #\space))
+(defparameter +pipe+  (p:char #\|))
 (defparameter +newline+ (p:char #\newline))
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
@@ -38,15 +39,20 @@
 (defparameter +example-close+ (p:alt (p:string "#+END_EXAMPLE") (p:string "#+end_example")))
 (defparameter +code-open+ (p:alt (p:string "#+BEGIN_SRC") (p:string "#+begin_src")))
 (defparameter +code-close+ (p:alt (p:string "#+END_SRC") (p:string "#+end_src")))
+(defparameter +tblfm+ (p:string "#+TBLFM: "))
+(defparameter +hline-start+ (p:string "|-"))
 (defparameter +consume-space+ (p:consume (lambda (c) (char= c #\space))))
 (defparameter +consume-between-a-line+ (*> +consume-space+ +newline+ +consume-space+))
 (defparameter +consume-junk+ (p:consume #'p:space?))
+(defparameter +consume-til-end+ (p:consume (lambda (c) (not (char= c #\newline)))))
 (defparameter +between-brackets+ (p:between +bracket-open+
                                             (p:take-while1 (lambda (c) (not (char= c #\]))))
                                             +bracket-close+))
 (defparameter +take1-til-end+ (p:take-while1 (lambda (c) (not (char= c #\newline)))))
 (defparameter +take1-til-break+ (p:take-while1 (lambda (c) (not (or (char= c #\space)
                                                                     (char= c #\newline))))))
+(defparameter +take-til-pipe+ (p:take-while (lambda (c) (not (char= c #\|)))))
+(defparameter +pipe-then-space+ (*> +pipe+ +consume-space+))
 
 ;; --- Whole Files --- ;;
 
@@ -57,8 +63,8 @@
                  (*> +consume-junk+ (document 0)))
            offset))
 
-;; TODO: 2025-09-18 Start here. After parsing this, move on to parsing the
-;; labels on source blocks (and result blocks), then do tables entirely.
+#+nil
+(from-file "tests/tables.org")
 
 (defun metadata (offset)
   "Parser: All extra information at the top of the file."
@@ -191,6 +197,47 @@ Yes."))
 
 (defun block (offset)
   (funcall (p:alt #'quote #'example #'code #'result #'paragraph) offset))
+
+#+nil
+(p:parse #'block "(/Markup/).")
+
+(defun table (offset)
+  (funcall (p:ap (lambda (name rows form)
+                   (make-table :name name
+                               :rows (coerce rows 'vector)
+                               :form form))
+                 (p:opt (*> +name+ (<* +take1-til-end+ +newline+)))
+                 (p:sep-end1 +newline+ #'row)
+                 (p:opt #'formula))
+           offset))
+
+#+nil
+(p:parse #'table "| A | B | C |
+|---+---+---|
+| D |   | E |")
+
+(defun formula (offset)
+  "Parser: A table formula."
+  (funcall (*> +tblfm+ +take1-til-end+) offset))
+
+#+nil
+(p:parse #'formula "#+TBLFM: $total=vsum(@I..@II)")
+
+;; FIXME: 2025-09-20 Proactively remove the dangling whitespace off the end of
+;; each cell?
+(defun row (offset)
+  (funcall (p:alt (<$ :hline (*> +hline-start+ +consume-til-end+))
+                  (p:ap (lambda (list) (coerce list 'vector))
+                        (*> +pipe-then-space+ (p:sep-end +pipe-then-space+
+                                                         (*> (p:not +newline+)
+                                                             (p:not #'p:eof)
+                                                             +take-til-pipe+)))))
+           offset))
+
+#+nil
+(p:parse #'row "|----+----|")
+#+nil
+(p:parse #'row "| A | B ||")
 
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is

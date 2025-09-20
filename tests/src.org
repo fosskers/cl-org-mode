@@ -1,0 +1,48 @@
+#+title: Simple
+
+#+name: sum
+#+begin_src emacs-lisp
+(+ 1 1)
+#+end_src
+
+#+RESULTS: sum
+: 2
+
+#+begin_src emacs-lisp
+(* 2 2)
+#+end_src
+
+#+RESULTS:
+: 4
+
+#+begin_src emacs-lisp :results raw
+(+ 1 1)
+#+end_src
+
+#+RESULTS:
+2
+
+#+name: long
+#+begin_src lisp :results output
+(dotimes (n 10)
+  (format t "~a~%" n))
+#+end_src
+
+#+RESULTS: long
+#+begin_example
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+#+end_example
+
+#+begin_src emacs-lisp
+#+end_src
+
+#+RESULTS:

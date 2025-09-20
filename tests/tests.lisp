@@ -66,4 +66,7 @@ Paragraph of next section.")))))
 (define-test parsing-files
   :parent files
   (finish (o:from-file "tests/empty.org"))
-  (finish (o:from-file "tests/src.org")))
+  (finish (o:from-file "tests/simple.org"))
+  (finish (o:from-file "tests/src.org"))
+  (finish (o:from-file "tests/tables.org"))
+  (finish (o:from-file "tests/everything.org")))

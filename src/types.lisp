@@ -53,7 +53,10 @@ by zero or more subsections."
 
 (defstruct table
   "A group of cells forming a chart."
-  (rows nil :type (vector row)))
+  (name nil :type (or null string))
+  (rows nil :type (vector row))
+  ;; A TBLFM (table formula).
+  (form nil :type (or null string)))
 
 (defstruct paragraph
   "An ordinary body of text."
@@ -112,10 +115,10 @@ caps."
   (sublist nil :type (or null listing)))
 
 (deftype row ()
-  '(or (member :break) (vector column)))
+  '(or (member :hline) (vector column)))
 
 (deftype column ()
-  '(or (member :empty) (vector words)))
+  '(vector words))
 
 ;; --- Timestamps --- ;;
 
