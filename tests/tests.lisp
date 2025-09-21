@@ -34,7 +34,9 @@
   :parent headings
   (is equalp #("foo" "bar" "baz") (p:parse #'o::tags ":foo:bar:baz:"))
   (is equalp #("foo" "bar" "baz") (p:parse #'o::tags ":foo:bar:baz:
-SCHEDULED: <2025-09-01>")))
+SCHEDULED: <2025-09-01>"))
+  (is equalp #(")") (o::heading-tags (p:parse #'o::heading "** Is a tag! :):")))
+  (is equalp #() (o::heading-tags (p:parse #'o::heading "** Not a tag! :)"))))
 
 (define-test bullets
   :parent headings

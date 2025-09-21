@@ -118,7 +118,7 @@ Content")
                    offset)))
 
 #+nil
-(p:parse #'comment "# hello")
+(p:parse #'comment "# hello ")
 #+nil
 (p:parse #'comment "#+hello: not a comment!")
 
@@ -568,6 +568,9 @@ Now the second thing.
 (p:parse #'heading "* Simplest")
 
 #+nil
+(p:parse #'heading "** Not *a* tag! :)")
+
+#+nil
 (p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:
 <2022-01-01>")
 
@@ -650,15 +653,23 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 
 (defun tags (offset)
   "Parser: Tags like :foo:bar:baz:"
-  ;; FIXME: 2025-08-31 Probably needs to be a (vector string).
-  (p:fmap (lambda (list) (coerce list 'vector))
-          (funcall (*> +colon+
-                       (p:sep-end1 +colon+ (p:take-while1 (lambda (c) (not (or (char= c #\:)
-                                                                               (char= c #\newline)))))))
-                   offset)))
+  (funcall (p:ap #'list->vector
+                 (p:between +colon+
+                            (p:sep1 (*> +colon+
+                                        (p:not +space+)
+                                        (p:not +newline+)
+                                        (p:not #'p:eof))
+                                    (p:take-while1 (lambda (c) (not (or (char= c #\:)
+                                                                        (char= c #\newline))))))
+                            +colon+))
+           offset))
 
 #+nil
+(p:parse #'tags ":foo:")
+#+nil
 (p:parse #'tags ":foo:bar:baz:")
+#+nil
+(p:parse #'tags ":)")
 
 (defun properties (offset)
   "Parser: A PROPERTIES drawer."
