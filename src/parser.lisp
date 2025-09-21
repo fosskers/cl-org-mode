@@ -216,6 +216,11 @@ Yes."))
 |---+---+---|
 | D |   | E |")
 
+#+nil
+(p:parse #'table "| A | *B* | C |
+|---+---+---|
+| D |   | E |")
+
 (defun formula (offset)
   "Parser: A table formula."
   (funcall (*> +tblfm+ +take1-til-end+) offset))
@@ -223,21 +228,31 @@ Yes."))
 #+nil
 (p:parse #'formula "#+TBLFM: $total=vsum(@I..@II)")
 
-;; FIXME: 2025-09-20 Proactively remove the dangling whitespace off the end of
-;; each cell?
 (defun row (offset)
   (funcall (p:alt (<$ :hline (*> +hline-start+ +consume-til-end+))
-                  (p:ap (lambda (list) (coerce list 'vector))
-                        (*> +pipe-then-space+ (p:sep-end +pipe-then-space+
-                                                         (*> (p:not +newline+)
-                                                             (p:not #'p:eof)
-                                                             +take-til-pipe+)))))
+                  (p:ap #'list->vector
+                        (*> +pipe-then-space+
+                            (p:sep-end +pipe-then-space+
+                                       (*> (p:not +newline+)
+                                           (p:not #'p:eof)
+                                           #'cell)))))
            offset))
 
 #+nil
 (p:parse #'row "|----+----|")
 #+nil
 (p:parse #'row "| A | B ||")
+#+nil
+(p:parse #'row "| A | B *B* B | C |")
+
+(defun cell (offset)
+  "Like `line', but limited to a single table cell."
+  (funcall (p:ap #'list->vector
+                 (p:sep-end +consume-space+ (*> (p:not +pipe+) #'words-in-cell)))
+           offset))
+
+#+nil
+(p:parse #'cell "hello *there* sir |")
 
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is
@@ -672,6 +687,11 @@ and not the second.")
   (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain)
            offset))
 
+(defun words-in-cell (offset)
+  "Parser: Like `words' but certain markup is banned or altered."
+  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'link #'punct #'plain-in-cell)
+           offset))
+
 ;; FIXME: 2025-09-04 There are certainly bugs here involving line breaks. Markup
 ;; can stretch over line breaks, but only one at a time. A paragraph break (two
 ;; newlines) stops the markup. Will definitely need unit tests for that.
@@ -745,6 +765,13 @@ and not the second.")
 
 #+nil
 (p:parse #'plain "hello there")
+
+(defun plain-in-cell (offset)
+  "Parser: Like `plain', but constrained to the conditions of a table cell."
+  (funcall (p:ap (lambda (s) (make-plain :text s))
+                 (p:take-while1 (lambda (c) (not (or (char= c #\space)
+                                                     (char= c #\|))))))
+           offset))
 
 (defun punct (offset)
   "Parser: A single character of punctuation."

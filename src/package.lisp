@@ -55,3 +55,6 @@
       (loop :for c := (read-char stream nil :eof)
             :until (eq c :eof)
             :do (write-char c out)))))
+
+(defun list->vector (list)
+  (coerce list 'vector))
