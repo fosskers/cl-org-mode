@@ -45,8 +45,8 @@ SCHEDULED: <2025-09-01>")))
 
 (define-test paragraphs
   :parent blocks
-  (is string= "A" (o:plain-text (car (p:parse #'o::line "A
-B"))))
+  (is string= "A" (car (p:parse #'o::line "A
+B")))
   (is = 6 (length (o:paragraph-words (p:parse #'o::paragraph "First line.
 Second line.
 Third line.

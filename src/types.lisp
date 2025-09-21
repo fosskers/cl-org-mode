@@ -199,10 +199,9 @@ of them?"
 (defstruct punct
   (char nil :type character))
 
-;; FIXME: 2025-08-31 Maybe get rid of this wrapping to avoid allocation?
-(defstruct plain
+(deftype plain ()
   "A single word."
-  (text nil :type string))
+  'string)
 
 ;; --- Generics --- ;;
 
@@ -217,12 +216,12 @@ of them?"
 (defmethod text ((underline underline)) (underline-text underline))
 (defmethod text ((verbatim verbatim)) (verbatim-text verbatim))
 (defmethod text ((strike strike)) (strike-text strike))
-(defmethod text ((plain plain)) (plain-text plain))
 (defmethod text ((todo todo)) (todo-text todo))
 (defmethod text ((priority priority)) (priority-text priority))
 (defmethod text ((comment comment)) (comment-text comment))
 (defmethod text ((code code)) (code-text code))
 (defmethod text ((result result)) (result-text result))
+(defmethod text ((string string)) string)
 
 ;; --- Utilities --- ;;
 

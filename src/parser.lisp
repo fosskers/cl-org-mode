@@ -196,7 +196,7 @@ Yes."))
 ;; --- Blocks --- ;;
 
 (defun block (offset)
-  (funcall (p:alt #'quote #'example #'code #'result #'paragraph) offset))
+  (funcall (p:alt #'quote #'example #'code #'result #'table #'paragraph) offset))
 
 #+nil
 (p:parse #'block "(/Markup/).")
@@ -215,6 +215,18 @@ Yes."))
 (p:parse #'table "| A | B | C |
 |---+---+---|
 | D |   | E |")
+
+#+nil
+(p:parse #'table "#+name: table
+| A | B | C |
+|---+---+---|
+| D |   | E |")
+
+#+nil
+(p:parse #'table "| A | B | C |
+|---+---+---|
+| D |   | E |
+#+TBLFM: $total=vsum(@I..@II)")
 
 #+nil
 (p:parse #'table "| A | *B* | C |
@@ -687,9 +699,10 @@ and not the second.")
   (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain)
            offset))
 
+;; FIXME: 2025-09-22 Is there still a point in keeping this separate from `words'?
 (defun words-in-cell (offset)
   "Parser: Like `words' but certain markup is banned or altered."
-  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'link #'punct #'plain-in-cell)
+  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain-in-cell)
            offset))
 
 ;; FIXME: 2025-09-04 There are certainly bugs here involving line breaks. Markup
@@ -758,19 +771,17 @@ and not the second.")
 
 (defun plain (offset)
   "Parser: A single, unadorned word."
-  (p:fmap (lambda (s) (make-plain :text s))
-          (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
-                                                       (char= c #\newline)))))
-                   offset)))
+  (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
+                                               (char= c #\newline)))))
+           offset))
 
 #+nil
 (p:parse #'plain "hello there")
 
 (defun plain-in-cell (offset)
   "Parser: Like `plain', but constrained to the conditions of a table cell."
-  (funcall (p:ap (lambda (s) (make-plain :text s))
-                 (p:take-while1 (lambda (c) (not (or (char= c #\space)
-                                                     (char= c #\|))))))
+  (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
+                                               (char= c #\|)))))
            offset))
 
 (defun punct (offset)
