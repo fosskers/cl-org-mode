@@ -20,15 +20,16 @@
   (let ((l (p:parse #'o:image "[[/path/to/img.jpeg]]")))
     (is string= "/path/to/img.jpeg" (o:url-text (o:image-url l)))))
 
-(define-test time)
-
 (define-test timestamps
-  :parent time
   (finish (p:parse #'o::timestamp "2025-08-31 So"))
   (let ((ts (p:parse #'o::timestamp "2021-04-28 Wed 13:00 .+1w -1d")))
     (is = 1 (o:delay-value (o:timestamp-delay ts)))))
 
-(define-test headings)
+(define-test headings
+  (fail (p:parse #'o::heading "**Foo"))
+  (is equalp
+      #("A" "capital" "letter")
+      (o::heading-text (p:parse #'o::heading "* A capital letter"))))
 
 (define-test tags
   :parent headings
@@ -42,10 +43,6 @@ SCHEDULED: <2025-09-01>"))
   :parent headings
   (is = 3 (p:parse #'o::bullets-of-heading "*** Hello"))
   (fail (p:parse #'o::bullets-of-heading "Hello")))
-
-(define-test illegal-headings
-  :parent headings
-  (fail (p:parse #'o::heading "**Foo")))
 
 (define-test blocks)
 

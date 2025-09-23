@@ -64,7 +64,7 @@
            offset))
 
 #+nil
-(from-file "tests/everything.org")
+(draw-doc-tree (file-document (from-file "tests/everything.org")))
 
 (defun metadata (offset)
   "Parser: All extra information at the top of the file."
@@ -170,9 +170,6 @@ tables and source blocks."
                    (depth-sensitive-heading stars)
                    (*> +consume-junk+ (document stars)))
              offset)))
-
-;; TODO: 2025-09-22 Start here. If a line starts with bold text, it is being
-;; misinterpreted as a heading line.
 
 #+nil
 (p:parse (document 0) "*Bold text* and not a heading.
@@ -573,6 +570,9 @@ Now the second thing.
            offset))
 
 #+nil
+(p:parse #'heading "* A capital letter")
+
+#+nil
 (p:parse #'heading "Not a heading!")
 
 #+nil
@@ -604,11 +604,15 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 (p:parse #'bullets-of-heading "*** Hello")
 
 (defun todo (offset)
-  "Parser: A single capital word."
-  (p:fmap (lambda (s) (make-todo :text s))
-          (funcall (p:take-while1 (lambda (c) (and (not (char= c #\space))
-                                                   (char<= #\A c #\Z))))
-                   offset)))
+  "Parser: A single capital word. The word must be at least two letters long
+in order to avoid parsing the normal word A as a TODO-like token."
+  (multiple-value-bind (res next)
+      (funcall (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                               (char<= #\A c #\Z))))
+               offset)
+    (cond ((p:failure? res) (p:fail next))
+          ((= 1 (length res)) (p:fail offset))
+          (t (values (make-todo :text res) next)))))
 
 #+nil
 (p:parse #'todo "TODO")

@@ -222,6 +222,8 @@ of them?"
 (defmethod text ((code code)) (code-text code))
 (defmethod text ((result result)) (result-text result))
 (defmethod text ((string string)) string)
+;; FIXME: 2025-09-24 This returns a character; probably naughty.
+(defmethod text ((punct punct)) (punct-char punct))
 
 ;; --- Utilities --- ;;
 
@@ -229,7 +231,7 @@ of them?"
   "Draw the basic structure of a parsed `document' tree."
   (labels ((recur (d depth)
              (loop :for sec :across (document-sections d)
-                   :do (progn (format t "~,,v,'-@a" depth "")
+                   :do (progn (format t "~,,v,'-@a " depth "")
                               (draw-words (heading-text (section-heading sec)))
                               (format t "~%")
                               (recur (section-document sec) (1+ depth))))))
