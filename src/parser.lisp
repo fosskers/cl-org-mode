@@ -64,7 +64,7 @@
            offset))
 
 #+nil
-(from-file "tests/tables.org")
+(from-file "tests/everything.org")
 
 (defun metadata (offset)
   "Parser: All extra information at the top of the file."
@@ -170,6 +170,16 @@ tables and source blocks."
                    (depth-sensitive-heading stars)
                    (*> +consume-junk+ (document stars)))
              offset)))
+
+;; TODO: 2025-09-22 Start here. If a line starts with bold text, it is being
+;; misinterpreted as a heading line.
+
+#+nil
+(p:parse (document 0) "*Bold text* and not a heading.
+
+This should really just be a paragraph.
+
+* Now /this/ is a heading!")
 
 #+nil
 (draw-doc-tree (p:parse (document 0) "* Grand Plans
@@ -545,6 +555,7 @@ Now the second thing.
                                  :timestamp ts
                                  :properties ps))
                  (<* #'bullets-of-heading
+                     +space+
                      +consume-space+)
                  (p:opt (<* #'todo (p:sneak #\space)))
                  (*> +consume-space+ (p:opt #'priority))

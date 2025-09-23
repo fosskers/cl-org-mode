@@ -43,6 +43,10 @@ SCHEDULED: <2025-09-01>"))
   (is = 3 (p:parse #'o::bullets-of-heading "*** Hello"))
   (fail (p:parse #'o::bullets-of-heading "Hello")))
 
+(define-test illegal-headings
+  :parent headings
+  (fail (p:parse #'o::heading "**Foo")))
+
 (define-test blocks)
 
 (define-test paragraphs
