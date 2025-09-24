@@ -1,3 +1,37 @@
+;;; A grammar for org-mode files. Ideally this parses everything that the
+;;; org-mode Emacs package itself would parse. If it does not, a test case
+;;; should be added demonstrating the failure, followed by a patch to fix it.
+;;; org-mode otherwise has no spec; the org-mode Emacs package itself is the
+;;; living reality which we here have to keep up with. That said, 95% of use
+;;; cases of 95% of users should already be covered here.
+;;;
+;;; A note on lists: Their "bullet type" can be mixed, but org-mode itself will
+;;; unify them if you S-Right or S-Left, implying that it is still a single
+;;; list. This Lisp library will also only recognize the bullet type of the
+;;; first item and assume all others obey it, thereby unifying them
+;;; automatically upon rerendering. With regards to list item indentation,
+;;; content must be aligned with the start of the previous line in order to be
+;;; considered the same item:
+;;;
+;;; - A
+;;; - B
+;;;   This is also B.
+;;; - C
+;;;
+;;; However:
+;;;
+;;; - A
+;;; - B
+;;; This is not B.
+;;; - C (a separate list)
+;;;
+;;; We also consider a multiline break between two list items to indicate two
+;;; lists.
+;;;
+;;; A note on comments: they can only appear on their own line, never after some
+;;; content on the same line like in other programming languages. This prevents
+;;; confusion around the content of headings and list items.
+
 (in-package :org-mode)
 
 ;; --- Static Parsers --- ;;
@@ -18,6 +52,8 @@
 (defparameter +zero+  (p:char #\0))
 (defparameter +space+ (p:char #\space))
 (defparameter +pipe+  (p:char #\|))
+(defparameter +paren+ (p:char #\)))
+(defparameter +period+ (p:char #\.))
 (defparameter +newline+ (p:char #\newline))
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
@@ -53,6 +89,8 @@
                                                                     (char= c #\newline))))))
 (defparameter +take-til-pipe+ (p:take-while (lambda (c) (not (char= c #\|)))))
 (defparameter +pipe-then-space+ (*> +pipe+ +consume-space+))
+(defparameter +any-small+ (p:any-if (lambda (c) (char<= #\a c #\z))))
+(defparameter +any-big+ (p:any-if (lambda (c) (char<= #\A c #\Z))))
 
 ;; --- Whole Files --- ;;
 
@@ -64,7 +102,7 @@
            offset))
 
 #+nil
-(draw-doc-tree (file-document (from-file "tests/everything.org")))
+(from-file "tests/everything.org")
 
 (defun metadata (offset)
   "Parser: All extra information at the top of the file."
@@ -202,11 +240,51 @@ Yes."))
 
 ;; --- Blocks --- ;;
 
+;; TODO: 2025-09-24 Start here. Implement lists. You're almost there!
+
 (defun block (offset)
   (funcall (p:alt #'quote #'example #'code #'result #'table #'paragraph) offset))
 
 #+nil
 (p:parse #'block "(/Markup/).")
+
+(defun listing (offset)
+  (funcall (p:ap (lambda (type items) (make-listing :type type
+                                                    :items (coerce items 'vector)))
+                 (p:peek #'list-bullet)
+                 (p:sep-end1 (*> +consume-space+ +newline+)
+                             #'list-item))
+           offset))
+
+#+nil
+(p:parse #'listing "- A
+- B
+- C
+
+- D")
+
+(defun list-bullet (offset)
+  (funcall (p:alt (<$ :bulleted +dash+)
+                  (<$ :plussed  +plus+)
+                  (<$ :numbered (*> #'p:unsigned +period+))
+                  (<$ :numpar   (*> #'p:unsigned +paren+))
+                  (<$ :letter-small (*> +any-small+ +period+))
+                  (<$ :letter-big (*> +any-big+ +period+))
+                  (<$ :letter-par-small (*> +any-small+ +paren+))
+                  (<$ :letter-par-big (*> +any-big+ +paren+)))
+           offset))
+
+#+nil
+(p:parse #'list-bullet "1.")
+
+(defun list-item (offset)
+  (funcall (p:ap (lambda (words) (make-item :words (coerce words 'vector)
+                                            :sublist '()))
+                 (*> #'list-bullet +space+ +consume-space+ #'line))
+           offset))
+
+#+nil
+(p:parse #'list-item "- Hello there")
 
 (defun table (offset)
   (funcall (p:ap (lambda (name rows form)

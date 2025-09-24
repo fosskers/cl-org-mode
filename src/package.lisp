@@ -1,3 +1,10 @@
+;;; Types and parsers for org-mode files.
+;;;
+;;; This implementation is mostly a port of the original Haskell that I wrote in
+;;; 2020 (https://github.com/fosskers/org-mode). Being in Common Lisp, however,
+;;; and controlling the implementation of the Parser Combinators library used
+;;; here enables easier testing, maintenance, and better long-term stability.
+
 (defpackage org-mode
   (:use :cl)
   (:shadow #:quote #:block #:time #:ratio)

@@ -48,7 +48,9 @@ by zero or more subsections."
 
 (defstruct listing
   "Various kinds of bullet lists."
-  (type  nil :type (member :bulleted :plussed :numbered))
+  (type  nil :type (member
+                    :bulleted :plussed :numbered :numpar :letter-small
+                    :letter-big :letter-par-small :letter-par-big))
   (items nil :type (vector item)))
 
 (defstruct table
