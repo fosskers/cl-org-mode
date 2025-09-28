@@ -113,6 +113,7 @@ caps."
 
 (defstruct item
   "A line in a listing. Can contain sublists."
+  (status  nil :type (or null (member :open :progress :done)))
   (words   nil :type (vector words))
   (sublist nil :type (or null listing)))
 

@@ -64,6 +64,16 @@ Paragraph of next section.")))))
   (finish (p:parse #'o::comment "# hello"))
   (fail (p:parse #'o::comment "#+hello: not a comment!")))
 
+(define-test lists
+  :parent blocks
+  (finish (p:parse (o::listing -1) "- A"))
+  (finish (p:parse (o::listing 0) "  - B"))
+  (is = 3 (length (o::listing-items (p:parse (o::listing -1) "- A
+- B
+- C
+
+- D")))))
+
 (define-test files)
 
 (define-test parsing-files
@@ -72,4 +82,5 @@ Paragraph of next section.")))))
   (finish (o:from-file "tests/simple.org"))
   (finish (o:from-file "tests/src.org"))
   (finish (o:from-file "tests/tables.org"))
+  (finish (o:from-file "tests/lists.org"))
   (finish (o:from-file "tests/everything.org")))

@@ -41,6 +41,7 @@
 (defparameter +w+     (p:char #\w))
 (defparameter +m+     (p:char #\m))
 (defparameter +y+     (p:char #\y))
+(defparameter +x+     (p:char #\x))
 (defparameter +colon+ (p:char #\:))
 (defparameter +dash+  (p:char #\-))
 (defparameter +equal+ (p:char #\=))
@@ -248,20 +249,47 @@ Yes."))
 #+nil
 (p:parse #'block "(/Markup/).")
 
-(defun listing (offset)
-  (funcall (p:ap (lambda (type items) (make-listing :type type
-                                                    :items (coerce items 'vector)))
-                 (p:peek #'list-bullet)
-                 (p:sep-end1 (*> +consume-space+ +newline+)
-                             #'list-item))
-           offset))
+(defun listing (depth)
+  (lambda (offset)
+    (multiple-value-bind (res next)
+        ;; Aren't I clever. We want to test for the existence of a list bullet,
+        ;; but the value we want to continue with is the number of spaces parsed
+        ;; before that bullet, hence `<*'.
+        (funcall (p:peek (<* +consume-space+ #'list-bullet)) offset)
+      (cond
+        ;; This was not at all anything that looks like a list item.
+        ((p:failure? res) (p:fail next))
+        ;; Yes we found something that looks like a list item, but it has a
+        ;; smaller indent than what we're currently looking for. This implies
+        ;; that we are currently try to parse a child list, but found an item
+        ;; that is actually a child of a higher layer.
+        ((<= (- res offset) depth) (p:fail offset))
+        (t (funcall (p:ap (lambda (type items)
+                            (make-listing :type type
+                                          :items (coerce items 'vector)))
+                          ;; FIXME: 2025-09-29 We do have to repeat the parse of
+                          ;; the bullet type here though, which is pretty
+                          ;; annoying. And it'll get parsed a third time down in
+                          ;; `list-item'.
+                          (p:peek (*> +consume-space+ #'list-bullet))
+                          (p:sep-end1 (*> +consume-space+ +newline+)
+                                      (list-item (- res offset))))
+                    next))))))
 
 #+nil
-(p:parse #'listing "- A
+(p:parse (listing -1) "- A
 - B
 - C
 
 - D")
+
+#+nil
+(p:parse (listing -1) "- A
+  1. B
+- C")
+
+#+nil
+(p:parse (listing 0) "  1. B")
 
 (defun list-bullet (offset)
   (funcall (p:alt (<$ :bulleted +dash+)
@@ -277,14 +305,54 @@ Yes."))
 #+nil
 (p:parse #'list-bullet "1.")
 
+(defun list-item (depth)
+  (lambda (offset)
+    (funcall (p:ap (lambda (status words sublist)
+                     (make-item :status status
+                                :words (coerce words 'vector)
+                                :sublist sublist))
+                   (*> (p:take depth) #'list-bullet +space+ +consume-space+ (p:opt #'list-item-status))
+                   (*> +consume-space+ #'line)
+                   (p:opt (*> +consume-space+ +newline+ (listing depth))))
+             offset)))
+
+#+nil
 (defun list-item (offset)
-  (funcall (p:ap (lambda (words) (make-item :words (coerce words 'vector)
-                                            :sublist '()))
-                 (*> #'list-bullet +space+ +consume-space+ #'line))
+  (funcall (p:ap (lambda (status words)
+                   (make-item :status status
+                              :words (coerce words 'vector)
+                              :sublist '()))
+                 (*> #'list-bullet +space+ +consume-space+ (p:opt #'list-item-status))
+                 (*> +consume-space+ #'line))
            offset))
 
 #+nil
-(p:parse #'list-item "- Hello there")
+(p:parse (list-item 0) "- Hello there")
+#+nil
+(p:parse (list-item 0) "- [x] Water the cat")
+#+nil
+(p:parse (list-item 0) "- A
+  1. B
+- C")
+
+;; TODO: 2025-09-26 Start here. C is being parsed into the same sublist as B,
+;; which is wrong.
+
+#+nil
+(p:parse (listing 0) "  1. B")
+#+nil
+(p:parse (list-item 2) "1. B")
+
+(defun list-item-status (offset)
+  (funcall (p:between +bracket-open+
+                      (p:alt (<$ :open +space+)
+                             (<$ :progress +dash+)
+                             (<$ :done +x+))
+                      +bracket-close+)
+           offset))
+
+#+nil
+(p:parse #'list-item-status "[x]")
 
 (defun table (offset)
   (funcall (p:ap (lambda (name rows form)
