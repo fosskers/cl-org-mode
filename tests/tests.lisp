@@ -72,7 +72,10 @@ Paragraph of next section.")))))
 - B
 - C
 
-- D")))))
+- D"))))
+  (is = 2 (length (o::listing-items (p:parse (o::listing -1) "- A
+  1. B
+- C")))))
 
 (define-test files)
 

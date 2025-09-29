@@ -256,9 +256,10 @@ Yes."))
         ;; but the value we want to continue with is the number of spaces parsed
         ;; before that bullet, hence `<*'.
         (funcall (p:peek (<* +consume-space+ #'list-bullet)) offset)
+      (declare (ignore next))
       (cond
         ;; This was not at all anything that looks like a list item.
-        ((p:failure? res) (p:fail next))
+        ((p:failure? res) (p:fail offset))
         ;; Yes we found something that looks like a list item, but it has a
         ;; smaller indent than what we're currently looking for. This implies
         ;; that we are currently try to parse a child list, but found an item
@@ -272,24 +273,18 @@ Yes."))
                           ;; annoying. And it'll get parsed a third time down in
                           ;; `list-item'.
                           (p:peek (*> +consume-space+ #'list-bullet))
-                          (p:sep-end1 (*> +consume-space+ +newline+)
-                                      (list-item (- res offset))))
-                    next))))))
-
-#+nil
-(p:parse (listing -1) "- A
-- B
-- C
-
-- D")
+                          ;; NOTE: 2025-09-30 This initial search for a newline
+                          ;; might look strange, but trust me that this was a
+                          ;; bugfix for correctly parsing further top-level
+                          ;; items after children had been parsed.
+                          (p:many1 (*> (p:opt +newline+)
+                                       (list-item (- res offset)))))
+                    offset))))))
 
 #+nil
 (p:parse (listing -1) "- A
   1. B
 - C")
-
-#+nil
-(p:parse (listing 0) "  1. B")
 
 (defun list-bullet (offset)
   (funcall (p:alt (<$ :bulleted +dash+)
@@ -311,6 +306,11 @@ Yes."))
                      (make-item :status status
                                 :words (coerce words 'vector)
                                 :sublist sublist))
+                   ;; BUG: 2025-09-30 This `take' can be too aggressive and
+                   ;; absorb things that aren't whitespace, including the actual
+                   ;; bullet start. Then we're in something of a buffer overrun
+                   ;; scenario, where content of the list item will start to be
+                   ;; parsed as the bullet instead.
                    (*> (p:take depth) #'list-bullet +space+ +consume-space+ (p:opt #'list-item-status))
                    (*> +consume-space+ #'line)
                    (p:opt (*> +consume-space+ +newline+ (listing depth))))
@@ -855,6 +855,8 @@ in order to avoid parsing the normal word A as a TODO-like token."
 ;; --- Text Markup --- ;;
 
 (defun line (offset)
+  "Parser: As many `words' as possible without going over a line break. Does not
+consume any newline characters."
   (funcall (p:sep-end1 +consume-space+ #'words) offset))
 
 #+nil
