@@ -93,6 +93,24 @@
 (defparameter +any-small+ (p:any-if (lambda (c) (char<= #\a c #\z))))
 (defparameter +any-big+ (p:any-if (lambda (c) (char<= #\A c #\Z))))
 
+;; --- Utilities --- ;;
+
+(defun consume-n (n p)
+  "Parser: A logical combination of `consume' and `take', such that only N-many
+of the to-be-consumed characters are consumed."
+  (lambda (offset)
+    (declare (optimize (speed 3) (safety 0)))
+    (let* ((keep (loop :for i fixnum :from offset :below p::*input-length*
+                       :while (< (- i offset) n)
+                       :while (funcall p (schar p::*input* i))
+                       :finally (return (- i offset))))
+           (next (p::off keep offset)))
+      (cond ((< keep n) (p:fail offset))
+            (t (values next next))))))
+
+#+nil
+(p:parse (consume-n 3 (lambda (c) (char= c #\a))) "aabbb")
+
 ;; --- Whole Files --- ;;
 
 (defun file (offset)
@@ -311,25 +329,13 @@ Yes."))
                      (make-item :status status
                                 :words (coerce words 'vector)
                                 :sublist sublist))
-                   ;; BUG: 2025-09-30 This `take' can be too aggressive and
-                   ;; absorb things that aren't whitespace, including the actual
-                   ;; bullet start. Then we're in something of a buffer overrun
-                   ;; scenario, where content of the list item will start to be
-                   ;; parsed as the bullet instead.
-                   (*> (p:take depth) #'list-bullet +space+ +consume-space+ (p:opt #'list-item-status))
+                   (*> (consume-n depth (lambda (c) (char= c #\space)))
+                       #'list-bullet
+                       +space+ +consume-space+
+                       (p:opt #'list-item-status))
                    (*> +consume-space+ #'line)
                    (p:opt (*> +consume-space+ +newline+ (depth-sensitive-listing depth))))
              offset)))
-
-#+nil
-(defun list-item (offset)
-  (funcall (p:ap (lambda (status words)
-                   (make-item :status status
-                              :words (coerce words 'vector)
-                              :sublist '()))
-                 (*> #'list-bullet +space+ +consume-space+ (p:opt #'list-item-status))
-                 (*> +consume-space+ #'line))
-           offset))
 
 #+nil
 (p:parse (list-item 0) "- Hello there")
@@ -339,11 +345,6 @@ Yes."))
 (p:parse (list-item 0) "- A
   1. B
 - C")
-
-#+nil
-(p:parse (listing 0) "  1. B")
-#+nil
-(p:parse (list-item 2) "1. B")
 
 (defun list-item-status (offset)
   (funcall (p:between +bracket-open+
