@@ -309,6 +309,10 @@ Yes."))
 (p:parse #'listing "- A
   B")
 
+#+nil
+(p:parse #'listing "- A
+B")
+
 (defun list-bullet (offset)
   (funcall (p:alt (<$ :bulleted +dash+)
                   (<$ :plussed  +plus+)
@@ -325,23 +329,46 @@ Yes."))
 
 (defun list-item (depth)
   (lambda (offset)
-    (funcall (p:ap (lambda (status words sublist)
-                     (make-item :status status
-                                :words (apply #'concatenate 'vector words)
-                                :sublist sublist))
-                   (*> (consume-n depth (lambda (c) (char= c #\space)))
-                       #'list-bullet
-                       +space+ +consume-space+
-                       (p:opt #'list-item-status))
-                   (*> +consume-space+
-                       (p:sep1 (*> +newline+
-                                   (consume-n depth (lambda (c) (char= c #\space)))
-                                   +consume-space+
-                                   (p:not #'list-bullet)
-                                   (p:not +newline+))
-                               #'line))
-                   (p:opt (*> +consume-space+ +newline+ (depth-sensitive-listing depth))))
-             offset)))
+    (funcall
+     (p:ap (lambda (status words sublist)
+             (make-item :status status
+                        :words (apply #'concatenate 'vector words)
+                        :sublist sublist))
+           (*> (consume-n depth (lambda (c) (char= c #\space)))
+               #'list-bullet
+               +space+ +consume-space+
+               (p:opt #'list-item-status))
+           (*> +consume-space+
+               (p:sep1
+                (*> +newline+
+                    ;; NOTE: 2025-10-01 There's some sensitivity to the level of
+                    ;; indentation here. It can't be identical to `depth' as
+                    ;; that causes false positives in cases like:
+                    ;;
+                    ;; - A
+                    ;; B
+                    ;;
+                    ;; where B should not be considered part of the list item,
+                    ;; but a new paragraph in its own right. This is even
+                    ;; clearer in the case of child lists:
+                    ;;
+                    ;; - A
+                    ;;   - B
+                    ;; C
+                    ;;
+                    ;; Here, clearly C should not be considered part of the same
+                    ;; line content as A, as upon reformatting it would appear
+                    ;; as:
+                    ;;
+                    ;; - A C
+                    ;;   - B
+                    (consume-n (1+ depth) (lambda (c) (char= c #\space)))
+                    +consume-space+
+                    (p:not #'list-bullet)
+                    (p:not +newline+))
+                #'line))
+           (p:opt (*> +consume-space+ +newline+ (depth-sensitive-listing depth))))
+     offset)))
 
 #+nil
 (p:parse (list-item 0) "- Hello there")

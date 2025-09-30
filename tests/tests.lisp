@@ -78,7 +78,10 @@ Paragraph of next section.")))))
 - C"))))
   (is equalp #("A" "B") (o::item-words (aref (o::listing-items (p:parse #'o::listing "- A
   B"))
-                                             0))))
+                                             0)))
+  (is equalp #("A") (o::item-words (aref (o::listing-items (p:parse #'o::listing "- A
+B"))
+                                         0))))
 
 (define-test files)
 
