@@ -21,12 +21,12 @@
     (is string= "/path/to/img.jpeg" (o:url-text (o:image-url l)))))
 
 (define-test timestamps
-  (finish (p:parse #'o::timestamp "2025-08-31 So"))
+    (finish (p:parse #'o::timestamp "2025-08-31 So"))
   (let ((ts (p:parse #'o::timestamp "2021-04-28 Wed 13:00 .+1w -1d")))
     (is = 1 (o:delay-value (o:timestamp-delay ts)))))
 
 (define-test headings
-  (fail (p:parse #'o::heading "**Foo"))
+    (fail (p:parse #'o::heading "**Foo"))
   (is equalp
       #("A" "capital" "letter")
       (o::heading-text (p:parse #'o::heading "* A capital letter"))))
@@ -66,16 +66,19 @@ Paragraph of next section.")))))
 
 (define-test lists
   :parent blocks
-  (finish (p:parse (o::listing -1) "- A"))
-  (finish (p:parse (o::listing 0) "  - B"))
-  (is = 3 (length (o::listing-items (p:parse (o::listing -1) "- A
+  (finish (p:parse #'o::listing "- A"))
+  (finish (p:parse (o::depth-sensitive-listing 0) "  - B"))
+  (is = 3 (length (o::listing-items (p:parse #'o::listing "- A
 - B
 - C
 
 - D"))))
-  (is = 2 (length (o::listing-items (p:parse (o::listing -1) "- A
+  (is = 2 (length (o::listing-items (p:parse #'o::listing "- A
   1. B
-- C")))))
+- C"))))
+  (is equalp #("A" "B") (o::item-words (aref (o::listing-items (p:parse #'o::listing "- A
+  B"))
+                                             0))))
 
 (define-test files)
 

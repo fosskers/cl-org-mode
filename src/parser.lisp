@@ -103,7 +103,7 @@
            offset))
 
 #+nil
-(from-file "tests/everything.org")
+(from-file "tests/lists.org")
 
 (defun metadata (offset)
   "Parser: All extra information at the top of the file."
@@ -241,15 +241,16 @@ Yes."))
 
 ;; --- Blocks --- ;;
 
-;; TODO: 2025-09-24 Start here. Implement lists. You're almost there!
-
 (defun block (offset)
-  (funcall (p:alt #'quote #'example #'code #'result #'table #'paragraph) offset))
+  (funcall (p:alt #'quote #'example #'code #'result #'table #'listing #'paragraph) offset))
 
 #+nil
 (p:parse #'block "(/Markup/).")
 
-(defun listing (depth)
+(defun listing (offset)
+  (funcall (depth-sensitive-listing -1) offset))
+
+(defun depth-sensitive-listing (depth)
   (lambda (offset)
     (multiple-value-bind (res next)
         ;; Aren't I clever. We want to test for the existence of a list bullet,
@@ -282,9 +283,13 @@ Yes."))
                     offset))))))
 
 #+nil
-(p:parse (listing -1) "- A
+(p:parse #'listing "- A
   1. B
 - C")
+
+#+nil
+(p:parse #'listing "- A
+  B")
 
 (defun list-bullet (offset)
   (funcall (p:alt (<$ :bulleted +dash+)
@@ -313,7 +318,7 @@ Yes."))
                    ;; parsed as the bullet instead.
                    (*> (p:take depth) #'list-bullet +space+ +consume-space+ (p:opt #'list-item-status))
                    (*> +consume-space+ #'line)
-                   (p:opt (*> +consume-space+ +newline+ (listing depth))))
+                   (p:opt (*> +consume-space+ +newline+ (depth-sensitive-listing depth))))
              offset)))
 
 #+nil
@@ -334,9 +339,6 @@ Yes."))
 (p:parse (list-item 0) "- A
   1. B
 - C")
-
-;; TODO: 2025-09-26 Start here. C is being parsed into the same sublist as B,
-;; which is wrong.
 
 #+nil
 (p:parse (listing 0) "  1. B")
