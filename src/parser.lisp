@@ -327,13 +327,19 @@ Yes."))
   (lambda (offset)
     (funcall (p:ap (lambda (status words sublist)
                      (make-item :status status
-                                :words (coerce words 'vector)
+                                :words (apply #'concatenate 'vector words)
                                 :sublist sublist))
                    (*> (consume-n depth (lambda (c) (char= c #\space)))
                        #'list-bullet
                        +space+ +consume-space+
                        (p:opt #'list-item-status))
-                   (*> +consume-space+ #'line)
+                   (*> +consume-space+
+                       (p:sep1 (*> +newline+
+                                   (consume-n depth (lambda (c) (char= c #\space)))
+                                   +consume-space+
+                                   (p:not #'list-bullet)
+                                   (p:not +newline+))
+                               #'line))
                    (p:opt (*> +consume-space+ +newline+ (depth-sensitive-listing depth))))
              offset)))
 
