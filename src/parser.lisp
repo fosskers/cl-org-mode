@@ -1062,16 +1062,23 @@ and not the second.")
                       +bracket-close+)
            offset))
 
+;; https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types
 (defun url-of-image (offset)
   (multiple-value-bind (res next)
       (funcall (p:take-while1 (lambda (c) (not (char= c #\])))) offset)
     (if (and (p:ok? res)
-             ;; FIXME: 2025-09-18 Support more image types.
-             (or (string-ends-with? res ".jpg")
+             (or (string-ends-with? res ".png")
+                 (string-ends-with? res ".jpg")
                  (string-ends-with? res ".jpeg")
-                 (string-ends-with? res ".png")))
+                 (string-ends-with? res ".svg")
+                 (string-ends-with? res ".webp")
+                 (string-ends-with? res ".gif")))
         (values (make-image :url (make-url :text res)) next)
         (p:fail offset))))
 
 #+nil
 (p:parse #'image "[[/path/to/img.jpeg]]")
+
+;; TODO: 2025-10-02 Account for HTML attributes on images.
+
+;; TODO: 2025-10-02 Account for Latex?
