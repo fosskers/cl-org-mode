@@ -15,8 +15,14 @@
   (:export #:from-string #:from-file)
   ;; --- Generics --- ;;
   (:export #:text)
+  ;; --- Documents --- ;;
+  (:export #:file #:file-metadata #:file-document
+           #:metadata #:metadata-comments #:metadata-properties #:metadata-metadata
+           #:document #:document-blocks #:document-sections)
   ;; --- Blocks --- ;;
-  (:export #:paragraph #:paragraph-words)
+  (:export #:block
+           #:paragraph #:paragraph-words
+           #:comment)
   ;; --- Text Markup --- ;;
   (:export #:url #:url-text
            #:link #:link-url #:link-text

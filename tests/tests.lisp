@@ -61,8 +61,25 @@ Paragraph of next section.")))))
 
 (define-test comments
   :parent blocks
-  (finish (p:parse #'o::comment "# hello"))
-  (fail (p:parse #'o::comment "#+hello: not a comment!")))
+  (finish (p:parse #'o:comment "# hello"))
+  (fail (p:parse #'o:comment "#+hello: not a comment!"))
+  (let ((blocks (o:document-blocks (o:file-document (p:parse #'o::file "Hello
+
+# Comment
+# Comment 2
+
+* Heading")))))
+    (of-type o:paragraph (aref blocks 0))
+    (of-type o:comment (aref blocks 1))
+    (is = 2 (length blocks))
+    (is = 2 (length (o:text (p:parse #'o:comment "# hello
+# goodbye
+
+# this shouldn't be parsed as the same comment"))))
+    (is = 2 (length (o:document-blocks (p:parse (o:document 0) "# hello
+# goodbye
+
+# this shouldn't be parsed as the same comment"))))))
 
 (define-test lists
   :parent blocks

@@ -18,12 +18,12 @@ by zero or more subsections."
   (sections nil :type (vector section)))
 
 (defstruct comment
-  "An as-is line that nonetheless must be parsed."
-  (text nil :type string))
+  "As-is lines that nonetheless must be parsed."
+  (text nil :type (vector string)))
 
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
-  '(or quote example code result listing table paragraph))
+  '(or comment quote example code result listing table paragraph))
 
 (defstruct quote
   "A quote block."

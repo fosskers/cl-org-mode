@@ -168,16 +168,26 @@ Content")
 
 (defun comment (offset)
   ;; FIXME: 2025-09-19 Should this proactively trim whitespace off the end?
-  (p:fmap (lambda (text) (make-comment :text text))
-          (funcall (*> (p:not #'label)
-                       +octothorp+
-                       (p:take-while (lambda (c) (not (char= c #\newline)))))
-                   offset)))
+  ;;
+  ;; 2025-10-02 At least it should not do so for the beginning of the string, as
+  ;; it's common for users to format messages by hand with leading spaces.
+  (funcall (p:ap (lambda (text) (make-comment :text (coerce text 'vector)))
+                 (p:sep-end1
+                  +newline+
+                  (*> (p:not #'label)
+                      +octothorp+
+                      (p:take-while (lambda (c) (not (char= c #\newline)))))))
+           offset))
 
 #+nil
 (p:parse #'comment "# hello ")
 #+nil
 (p:parse #'comment "#+hello: not a comment!")
+#+nil
+(p:parse #'comment "# hello
+# goodbye
+
+# this shouldn't be parsed as the same comment")
 
 (defun label (offset)
   "Parser: The key of some key-value pair. Used at the top level, but also on
@@ -202,7 +212,6 @@ tables and source blocks."
 
 ;; --- Documents and Sections --- ;;
 
-;; FIXME: 2025-09-18 Account for comments!
 (defun document (stars)
   "Parser: Many blocks and any subsections of deeper depth."
   (lambda (offset)
@@ -219,6 +228,16 @@ tables and source blocks."
                        ;; just a `many'.
                        (p:many (section (1+ stars)))))
              offset)))
+
+#+nil
+(p:parse #'file "Hello
+
+# Comment
+# Comment 2
+
+* Heading
+
+Stuff")
 
 (defun section (stars)
   "Parser: A heading and any subsequent content."
@@ -260,7 +279,7 @@ Yes."))
 ;; --- Blocks --- ;;
 
 (defun block (offset)
-  (funcall (p:alt #'quote #'example #'code #'result #'table #'listing #'paragraph) offset))
+  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'paragraph) offset))
 
 #+nil
 (p:parse #'block "(/Markup/).")
@@ -307,11 +326,19 @@ Yes."))
 
 #+nil
 (p:parse #'listing "- A
-  B")
+  *B*")
 
 #+nil
 (p:parse #'listing "- A
 B")
+
+#+nil
+(p:parse #'listing "- *A
+  B*")
+
+#+nil
+(p:parse #'bold "*A
+B*")
 
 (defun list-bullet (offset)
   (funcall (p:alt (<$ :bulleted +dash+)
