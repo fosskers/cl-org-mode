@@ -13,7 +13,9 @@
     (is string= "https://www.fosskers.ca" (o:url-text (o:link-url l)))
     (is string= "Site" (o:link-text l)))
   (let ((l (p:parse #'o:link "[[https://www.fosskers.ca]]")))
-    (is string= "https://www.fosskers.ca" (o:url-text (o:link-url l)))))
+    (is string= "https://www.fosskers.ca" (o:url-text (o:link-url l))))
+  (finish (p:parse #'o:link "#+ATTR_HTML: :title foo
+[[https://www.fosskers.ca]]")))
 
 (define-test images
   :parent markup

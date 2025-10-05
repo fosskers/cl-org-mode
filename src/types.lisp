@@ -56,6 +56,7 @@ by zero or more subsections."
 (defstruct table
   "A group of cells forming a chart."
   (caption nil :type (or null caption))
+  (attr    nil :type (or null string))
   (plot    nil :type (or null string))
   (name    nil :type (or null string))
   (rows    nil :type (vector row))
@@ -174,6 +175,7 @@ of them?"
   '(or bold italic highlight underline verbatim strike link image punct plain))
 
 (defstruct link
+  (attr nil :type (or null string))
   (url  nil :type url)
   (text nil :type (or null string)))
 

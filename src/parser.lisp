@@ -67,6 +67,7 @@
 (defparameter +caption-start+ (p:alt (p:string "#+CAPTION") (p:string "#+caption")))
 (defparameter +plot-start+ (p:alt (p:string "#+PLOT: ") (p:string "#+plot: ")))
 (defparameter +name+ (p:alt (p:string "#+NAME: ") (p:string "#+name: ")))
+(defparameter +attr-html+ (p:alt (p:string "#+ATTR_HTML: ") (p:string "#+attr_html: ")))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
@@ -440,13 +441,15 @@ B*")
 (p:parse #'list-item-line "Hello *there* [1/2]")
 
 (defun table (offset)
-  (funcall (p:ap (lambda (caption plot name rows form)
+  (funcall (p:ap (lambda (caption attr plot name rows form)
                    (make-table :caption caption
+                               :attr attr
                                :plot plot
                                :name name
                                :rows (coerce rows 'vector)
                                :form form))
                  (p:opt (<* #'caption +consume-space+ +newline+))
+                 (p:opt (<* #'attr-html +newline+))
                  (p:opt (<* #'plot +newline+))
                  (p:opt (*> +name+ (<* +take1-til-end+ +newline+)))
                  (p:sep-end1 +newline+ #'row)
@@ -477,6 +480,7 @@ B*")
 
 #+nil
 (p:parse #'table "#+CAPTION[short]: long
+#+ATTR_HTML: :border 2 :rules all :frame border
 #+PLOT: title:\"Citas\" ind:1 deps:(3) type:2d with:histograms set:\"yrange [0:]\"
 #+NAME: cities
 | Sede      | Max cites | H-index |
@@ -485,7 +489,8 @@ B*")
 | Leeds     |    165.77 |   19.68 |
 | Sao Paolo |     71.00 |   11.50 |
 | Stockholm |    134.19 |   14.33 |
-| Morelia   |    257.56 |   17.67 |")
+| Morelia   |    257.56 |   17.67 |
+#+TBLFM: $total=vsum(@I..@II)")
 
 (defun caption (offset)
   (funcall (p:ap (lambda (short long) (make-caption :short short :long long))
@@ -539,6 +544,12 @@ B*")
 
 #+nil
 (p:parse #'cell "hello *there* sir |")
+
+(defun attr-html (offset)
+  (funcall (*> +attr-html+ +consume-space+ +take1-til-end+) offset))
+
+#+nil
+(p:parse #'attr-html "#+ATTR_HTML: :border 2 :rules all")
 
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is
@@ -1098,19 +1109,22 @@ and not the second.")
 (p:parse #'punct ",hello")
 
 (defun link (offset)
-  (funcall (p:between +bracket-open+
-                      (p:ap (lambda (url text)
-                              (make-link :url (make-url :text url)
-                                         :text text))
-                            +between-brackets+
-                            (p:opt +between-brackets+))
-                      +bracket-close+)
+  (funcall (p:ap (lambda (attr url text)
+                   (make-link :attr attr
+                              :url (make-url :text url)
+                              :text text))
+                 (p:opt (<* #'attr-html +newline+))
+                 (*> +bracket-open+ +between-brackets+)
+                 (<* (p:opt +between-brackets+) +bracket-close+))
            offset))
 
 #+nil
 (p:parse #'link "[[https://www.fosskers.ca][Site]]")
 #+nil
 (p:parse #'link "[[https://www.fosskers.ca]]")
+#+nil
+(p:parse #'link "#+ATTR_HTML: :title foo
+[[https://www.fosskers.ca]]")
 
 (defun image (offset)
   (funcall (p:between +bracket-open+
