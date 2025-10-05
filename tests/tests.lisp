@@ -20,7 +20,9 @@
 (define-test images
   :parent markup
   (let ((l (p:parse #'o:image "[[/path/to/img.jpeg]]")))
-    (is string= "/path/to/img.jpeg" (o:url-text (o:image-url l)))))
+    (is string= "/path/to/img.jpeg" (o:url-text (o:image-url l))))
+  (finish (p:parse #'o:image "#+CAPTION: Hello
+[[/path/to/img.jpeg]]")))
 
 (define-test timestamps
   (finish (p:parse #'o::timestamp "2025-08-31 So"))

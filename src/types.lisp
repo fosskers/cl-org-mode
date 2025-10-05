@@ -180,7 +180,8 @@ of them?"
   (text nil :type (or null string)))
 
 (defstruct image
-  (url nil :type url))
+  (caption nil :type (or null caption))
+  (url     nil :type url))
 
 (defstruct url
   "The url portion of some link-like type."

@@ -1127,12 +1127,22 @@ and not the second.")
 [[https://www.fosskers.ca]]")
 
 (defun image (offset)
-  (funcall (p:between +bracket-open+
-                      (p:between +bracket-open+
-                                 #'url-of-image
-                                 +bracket-close+)
-                      +bracket-close+)
+  (funcall (p:ap (lambda (caption url)
+                   (make-image :caption caption
+                               :url url))
+                 (p:opt (<* #'caption +newline+))
+                 (p:between +bracket-open+
+                            (p:between +bracket-open+
+                                       #'url-of-image
+                                       +bracket-close+)
+                            +bracket-close+))
            offset))
+
+#+nil
+(p:parse #'image "[[/path/to/img.jpeg]]")
+#+nil
+(p:parse #'image "#+CAPTION: Hello
+[[/path/to/img.jpeg]]")
 
 ;; https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types
 (defun url-of-image (offset)
@@ -1145,9 +1155,6 @@ and not the second.")
                  (string-ends-with? res ".svg")
                  (string-ends-with? res ".webp")
                  (string-ends-with? res ".gif")))
-        (values (make-image :url (make-url :text res)) next)
+        (values (make-url :text res) next)
         (p:fail offset))))
-
-#+nil
-(p:parse #'image "[[/path/to/img.jpeg]]")
 
