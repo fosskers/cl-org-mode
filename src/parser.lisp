@@ -42,6 +42,7 @@
 (defparameter +m+     (p:char #\m))
 (defparameter +y+     (p:char #\y))
 (defparameter +x+     (p:char #\x))
+(defparameter +capital-x+ (p:char #\X))
 (defparameter +colon+ (p:char #\:))
 (defparameter +dash+  (p:char #\-))
 (defparameter +equal+ (p:char #\=))
@@ -405,12 +406,14 @@ B*")
 (p:parse (list-item 0) "- A
   1. B
 - C")
+#+nil
+(p:parse (list-item 0) "- Hello there [1/2]")
 
 (defun list-item-status (offset)
   (funcall (p:between +bracket-open+
                       (p:alt (<$ :open +space+)
                              (<$ :progress +dash+)
-                             (<$ :done +x+))
+                             (<$ :done (p:alt +x+ +capital-x+)))
                       +bracket-close+)
            offset))
 
@@ -1079,6 +1082,3 @@ and not the second.")
 #+nil
 (p:parse #'image "[[/path/to/img.jpeg]]")
 
-;; TODO: 2025-10-02 Account for HTML attributes on images.
-
-;; TODO: 2025-10-02 Account for Latex?
