@@ -64,7 +64,9 @@
 (defparameter +end+        (p:string ":END:"))
 (defparameter +label-start+ (p:string "#+"))
 (defparameter +results-start+ (p:string "#+RESULTS:"))
-(defparameter +name+ (p:string "#+name: "))
+(defparameter +caption-start+ (p:alt (p:string "#+CAPTION") (p:string "#+caption")))
+(defparameter +plot-start+ (p:alt (p:string "#+PLOT: ") (p:string "#+plot: ")))
+(defparameter +name+ (p:alt (p:string "#+NAME: ") (p:string "#+name: ")))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
@@ -438,10 +440,14 @@ B*")
 (p:parse #'list-item-line "Hello *there* [1/2]")
 
 (defun table (offset)
-  (funcall (p:ap (lambda (name rows form)
-                   (make-table :name name
+  (funcall (p:ap (lambda (caption plot name rows form)
+                   (make-table :caption caption
+                               :plot plot
+                               :name name
                                :rows (coerce rows 'vector)
                                :form form))
+                 (p:opt (<* #'caption +consume-space+ +newline+))
+                 (p:opt (<* #'plot +newline+))
                  (p:opt (*> +name+ (<* +take1-til-end+ +newline+)))
                  (p:sep-end1 +newline+ #'row)
                  (p:opt #'formula))
@@ -468,6 +474,38 @@ B*")
 (p:parse #'table "| A | *B* | C |
 |---+---+---|
 | D |   | E |")
+
+#+nil
+(p:parse #'table "#+CAPTION[short]: long
+#+PLOT: title:\"Citas\" ind:1 deps:(3) type:2d with:histograms set:\"yrange [0:]\"
+#+NAME: cities
+| Sede      | Max cites | H-index |
+|-----------+-----------+---------|
+| Chile     |    257.72 |   21.39 |
+| Leeds     |    165.77 |   19.68 |
+| Sao Paolo |     71.00 |   11.50 |
+| Stockholm |    134.19 |   14.33 |
+| Morelia   |    257.56 |   17.67 |")
+
+(defun caption (offset)
+  (funcall (p:ap (lambda (short long) (make-caption :short short :long long))
+                 (*> +caption-start+
+                     (p:opt (p:between +bracket-open+
+                                       (p:take-while (lambda (c) (and (not (char= c #\newline))
+                                                                      (not (char= c #\])))))
+                                       +bracket-close+)))
+                 (*> +colon+ +space+ +consume-space+ +take1-til-end+))
+           offset))
+
+#+nil
+(p:parse #'caption "#+CAPTION[short]: long")
+
+(defun plot (offset)
+  "Parser: A GnuPlot line above a table."
+  (funcall (*> +plot-start+ +consume-space+ +take1-til-end+) offset))
+
+#+nil
+(p:parse #'plot "#+PLOT: title:\"Citas\" ind:1 deps:(3) type:2d with:histograms set:\"yrange [0:]\"")
 
 (defun formula (offset)
   "Parser: A table formula."

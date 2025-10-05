@@ -55,10 +55,18 @@ by zero or more subsections."
 
 (defstruct table
   "A group of cells forming a chart."
-  (name nil :type (or null string))
-  (rows nil :type (vector row))
+  (caption nil :type (or null caption))
+  (plot    nil :type (or null string))
+  (name    nil :type (or null string))
+  (rows    nil :type (vector row))
   ;; A TBLFM (table formula).
-  (form nil :type (or null string)))
+  (form    nil :type (or null string)))
+
+(defstruct caption
+  "Additional commentary that can appear before a number of structures, such
+as tables and image links."
+  (short nil :type (or null string))
+  (long  nil :type string))
 
 (defstruct paragraph
   "An ordinary body of text."
