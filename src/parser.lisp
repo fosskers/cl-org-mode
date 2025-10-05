@@ -67,7 +67,6 @@
 (defparameter +caption-start+ (p:alt (p:string "#+CAPTION") (p:string "#+caption")))
 (defparameter +plot-start+ (p:alt (p:string "#+PLOT: ") (p:string "#+plot: ")))
 (defparameter +name+ (p:alt (p:string "#+NAME: ") (p:string "#+name: ")))
-(defparameter +attr-html+ (p:alt (p:string "#+ATTR_HTML: ") (p:string "#+attr_html: ")))
 (defparameter +angle-open+  (p:char #\<))
 (defparameter +angle-close+ (p:char #\>))
 (defparameter +percent+ (p:char #\%))
@@ -451,7 +450,7 @@ B*")
                  (p:opt (<* #'caption +consume-space+ +newline+))
                  (p:opt (<* #'attr-html +newline+))
                  (p:opt (<* #'plot +newline+))
-                 (p:opt (*> +name+ (<* +take1-til-end+ +newline+)))
+                 (p:opt (<* #'name +newline+))
                  (p:sep-end1 +newline+ #'row)
                  (p:opt #'formula))
            offset))
@@ -624,9 +623,7 @@ Now the second thing.
                               :lang lang
                               :vars vars
                               :text (coerce code 'vector)))
-                 (p:opt (*> +name+
-                            (<* +take1-til-end+
-                                +newline+)))
+                 (p:opt (<* #'name +newline+))
                  (*> +code-open+
                      +consume-space+
                      (p:take-while (lambda (c) (not (or (char= c #\space)
@@ -1109,11 +1106,11 @@ and not the second.")
 (p:parse #'punct ",hello")
 
 (defun link (offset)
-  (funcall (p:ap (lambda (attr url text)
-                   (make-link :attr attr
+  (funcall (p:ap (lambda (attrs url text)
+                   (make-link :attrs attrs
                               :url (make-url :text url)
                               :text text))
-                 (p:opt (<* #'attr-html +newline+))
+                 (p:opt #'attrs)
                  (*> +bracket-open+ +between-brackets+)
                  (<* (p:opt +between-brackets+) +bracket-close+))
            offset))
@@ -1127,10 +1124,14 @@ and not the second.")
 [[https://www.fosskers.ca]]")
 
 (defun image (offset)
-  (funcall (p:ap (lambda (caption url)
+  (funcall (p:ap (lambda (caption attrs name url)
                    (make-image :caption caption
+                               :attrs attrs
+                               :name name
                                :url url))
                  (p:opt (<* #'caption +newline+))
+                 (p:opt #'attrs)
+                 (p:opt (<* #'name +newline+))
                  (p:between +bracket-open+
                             (p:between +bracket-open+
                                        #'url-of-image
@@ -1142,6 +1143,8 @@ and not the second.")
 (p:parse #'image "[[/path/to/img.jpeg]]")
 #+nil
 (p:parse #'image "#+CAPTION: Hello
+#+ATTR_HTML: :title foo
+#+NAME: foo
 [[/path/to/img.jpeg]]")
 
 ;; https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types
@@ -1158,3 +1161,31 @@ and not the second.")
         (values (make-url :text res) next)
         (p:fail offset))))
 
+(defun name (offset)
+  "Parser: A #+NAME line."
+  (funcall (*> +name+ +take1-til-end+) offset))
+
+(defun attrs (offset)
+  (funcall (p:ap (lambda (alist)
+                   (make-attrs :html  (cdr (assoc :html  alist))
+                               :org   (cdr (assoc :org   alist))
+                               :latex (cdr (assoc :latex alist))))
+                 (p:sep-end1 +newline+ #'attr-pair))
+           offset))
+
+#+nil
+(p:parse #'attrs "#+ATTR_HTML: :title foo
+#+ATTR_ORG: :center true")
+
+(defun attr-pair (offset)
+  (funcall (p:ap #'cons
+                 (*> (p:alt (p:string "#+ATTR_")
+                            (p:string "#+attr_"))
+                     (p:alt (<$ :html  (p:alt (p:string "HTML") (p:string "html")))
+                            (<$ :org   (p:alt (p:string "ORG") (p:string "org")))
+                            (<$ :latex (p:alt (p:string "LATEX") (p:string "latex")))))
+                 (*> +colon+ +space+ +consume-space+ +take1-til-end+))
+           offset))
+
+#+nil
+(p:parse #'attr-pair "#+ATTR_HTML: :title foo")

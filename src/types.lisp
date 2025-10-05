@@ -21,6 +21,12 @@ by zero or more subsections."
   "As-is lines that nonetheless must be parsed."
   (text nil :type (vector string)))
 
+(defstruct attrs
+  "ATTR pragmas that can attach to various structures."
+  (html  nil :type (or null string))
+  (org   nil :type (or null string))
+  (latex nil :type (or null string)))
+
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
   '(or comment quote example code result listing table paragraph))
@@ -77,6 +83,8 @@ as tables and image links."
   "A section or subsection, marked by a heading line and followed recursively by other documents."
   (heading  nil :type heading)
   (document nil :type document))
+
+;; --- Headings --- ;;
 
 (defstruct heading
   "The top line of a `section' with associated metadata."
@@ -175,12 +183,14 @@ of them?"
   '(or bold italic highlight underline verbatim strike link image punct plain))
 
 (defstruct link
-  (attr nil :type (or null string))
-  (url  nil :type url)
-  (text nil :type (or null string)))
+  (attrs nil :type (or null attrs))
+  (url   nil :type url)
+  (text  nil :type (or null string)))
 
 (defstruct image
   (caption nil :type (or null caption))
+  (attrs   nil :type (or null attrs))
+  (name    nil :type (or null string))
   (url     nil :type url))
 
 (defstruct url

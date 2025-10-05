@@ -17,3 +17,4 @@
 | # | Total  |     12 |
 | ^ |        |  total |
 #+TBLFM: $total=vsum(@I..@II)
+
