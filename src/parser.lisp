@@ -288,6 +288,11 @@ Yes."))
 (defun listing (offset)
   (funcall (depth-sensitive-listing -1) offset))
 
+#+nil
+(p:parse #'listing "- A [1/2]
+  - [x] B
+  - [ ] C")
+
 (defun depth-sensitive-listing (depth)
   (lambda (offset)
     (multiple-value-bind (res next)
@@ -358,9 +363,10 @@ B*")
 (defun list-item (depth)
   (lambda (offset)
     (funcall
-     (p:ap (lambda (status words sublist)
+     (p:ap (lambda (status words progress sublist)
              (make-item :status status
                         :words (apply #'concatenate 'vector words)
+                        :progress progress
                         :sublist sublist))
            (*> (consume-n depth (lambda (c) (char= c #\space)))
                #'list-bullet
@@ -394,7 +400,8 @@ B*")
                     +consume-space+
                     (p:not #'list-bullet)
                     (p:not +newline+))
-                #'line))
+                #'list-item-line))
+           (p:opt (*> +consume-space+ #'progress))
            (p:opt (*> +consume-space+ +newline+ (depth-sensitive-listing depth))))
      offset)))
 
@@ -419,6 +426,16 @@ B*")
 
 #+nil
 (p:parse #'list-item-status "[x]")
+
+(defun list-item-line (offset)
+  (funcall (p:ap (lambda (list) (coerce list 'vector))
+                 (p:sep-end1 (*> +consume-space+
+                                 (p:not #'progress))
+                             #'words))
+           offset))
+
+#+nil
+(p:parse #'list-item-line "Hello *there* [1/2]")
 
 (defun table (offset)
   (funcall (p:ap (lambda (name rows form)
