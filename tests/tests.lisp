@@ -9,11 +9,13 @@
 
 (define-test links
   :parent markup
-  (let ((l (p:parse #'o:link "[[https://www.fosskers.ca][Site]]")))
+  (let ((l (p:parse #'o:link "[[https://www.fosskers.ca][Amazing Site]]")))
     (is string= "https://www.fosskers.ca" (o:url-text (o:link-url l)))
-    (is string= "Site" (o:link-text l)))
+    (is equalp #("Amazing" "Site") (o:link-text l)))
   (let ((l (p:parse #'o:link "[[https://www.fosskers.ca]]")))
     (is string= "https://www.fosskers.ca" (o:url-text (o:link-url l))))
+  (let ((l (p:parse #'o:link "[[https://www.fosskers.ca][Amazing *Site* Here]]")))
+    (is equalp (vector "Amazing" (o::make-bold :text "Site") "Here") (o:link-text l)))
   (finish (p:parse #'o:link "#+ATTR_HTML: :title foo
 [[https://www.fosskers.ca]]")))
 

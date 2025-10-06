@@ -185,7 +185,7 @@ of them?"
 (defstruct link
   (attrs nil :type (or null attrs))
   (url   nil :type url)
-  (text  nil :type (or null string)))
+  (text  nil :type (or null (vector words))))
 
 (defstruct image
   (caption nil :type (or null caption))

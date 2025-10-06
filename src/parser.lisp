@@ -1008,6 +1008,12 @@ and not the second.")
   (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain-in-cell)
            offset))
 
+;; FIXME: 2025-10-07 Same here, can these not be combined?
+(defun words-in-link (offset)
+  "Parser: Like `words' but certain markup is banned or altered."
+  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain-in-link)
+           offset))
+
 ;; FIXME: 2025-09-04 There are certainly bugs here involving line breaks. Markup
 ;; can stretch over line breaks, but only one at a time. A paragraph break (two
 ;; newlines) stops the markup. Will definitely need unit tests for that.
@@ -1087,6 +1093,12 @@ and not the second.")
                                                (char= c #\|)))))
            offset))
 
+(defun plain-in-link (offset)
+  "Parser: Like `plain', but constrained to the conditions of a link description."
+  (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
+                                               (char= c #\])))))
+           offset))
+
 (defun punct (offset)
   "Parser: A single character of punctuation."
   (p:fmap (lambda (c) (make-punct :char c))
@@ -1112,16 +1124,25 @@ and not the second.")
                               :text text))
                  (p:opt #'attrs)
                  (*> +bracket-open+ +between-brackets+)
-                 (<* (p:opt +between-brackets+) +bracket-close+))
+                 (<* (p:opt (*> +bracket-open+
+                                (<* #'link-description +bracket-close+)))
+                     +bracket-close+))
            offset))
 
 #+nil
-(p:parse #'link "[[https://www.fosskers.ca][Site]]")
+(p:parse #'link "[[https://www.fosskers.ca][*Amazing* Site]]")
 #+nil
 (p:parse #'link "[[https://www.fosskers.ca]]")
 #+nil
 (p:parse #'link "#+ATTR_HTML: :title foo
 [[https://www.fosskers.ca]]")
+
+(defun link-description (offset)
+  "Like `line', but limited to a link description."
+  (funcall (p:ap #'list->vector
+                 (p:sep-end +consume-space+ (*> (p:not +bracket-close+)
+                                                #'words-in-link)))
+           offset))
 
 (defun image (offset)
   (funcall (p:ap (lambda (caption attrs name url)

@@ -54,6 +54,8 @@ Stuff.
 
 [[https://www.fosskers.ca/][Check out my website.]] It has a blog with ~code~ samples.
 
+This [[https://www.fosskers.ca][Link has /markup/ in it]] 
+
 * Heading with /markup/
 
 さぁ日本語も入れたらどうなる？
