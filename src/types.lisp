@@ -62,7 +62,7 @@ by zero or more subsections."
 (defstruct table
   "A group of cells forming a chart."
   (caption nil :type (or null caption))
-  (attr    nil :type (or null string))
+  (attrs   nil :type (or null attrs))
   (plot    nil :type (or null string))
   (name    nil :type (or null string))
   (rows    nil :type (vector row))

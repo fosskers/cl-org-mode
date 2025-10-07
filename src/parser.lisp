@@ -458,15 +458,15 @@ B*")
 (p:parse #'list-item-line "Hello *there* [1/2]")
 
 (defun table (offset)
-  (funcall (p:ap (lambda (caption attr plot name rows form)
+  (funcall (p:ap (lambda (caption attrs plot name rows form)
                    (make-table :caption caption
-                               :attr attr
+                               :attrs attrs
                                :plot plot
                                :name name
                                :rows (coerce rows 'vector)
                                :form form))
                  (p:opt (<* #'caption +consume-space+ +newline+))
-                 (p:opt (<* #'attr-html +newline+))
+                 (p:opt (<* #'attrs +newline+))
                  (p:opt (<* #'plot +newline+))
                  (p:opt (<* #'name +newline+))
                  (p:sep-end1 +newline+ #'row)
@@ -561,12 +561,6 @@ B*")
 
 #+nil
 (p:parse #'cell "hello *there* sir |")
-
-(defun attr-html (offset)
-  (funcall (*> +attr-html+ +consume-space+ +take1-til-end+) offset))
-
-#+nil
-(p:parse #'attr-html "#+ATTR_HTML: :border 2 :rules all")
 
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is
