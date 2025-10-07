@@ -1032,21 +1032,21 @@ consume any newline characters."
 (p:parse #'line "This should only parse the first line
 and not the second.")
 
-(defun words (offset)
-  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain)
+(defun markup (offset)
+  "Parser: Some non-plain markup object."
+  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct)
            offset))
 
-;; FIXME: 2025-09-22 Is there still a point in keeping this separate from `words'?
+(defun words (offset)
+  (funcall (p:alt #'markup #'plain) offset))
+
 (defun words-in-cell (offset)
   "Parser: Like `words' but certain markup is banned or altered."
-  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain-in-cell)
-           offset))
+  (funcall (p:alt #'markup #'plain-in-cell) offset))
 
-;; FIXME: 2025-10-07 Same here, can these not be combined?
 (defun words-in-link (offset)
   "Parser: Like `words' but certain markup is banned or altered."
-  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct #'plain-in-link)
-           offset))
+  (funcall (p:alt #'markup #'plain-in-link) offset))
 
 ;; FIXME: 2025-09-04 There are certainly bugs here involving line breaks. Markup
 ;; can stretch over line breaks, but only one at a time. A paragraph break (two
