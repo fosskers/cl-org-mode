@@ -86,7 +86,15 @@ Great content.
 [[https://www.fosskers.ca]]
 
 More!
-:END:")))
+:END:"))
+  (let ((v (o:document-blocks (o:file-document (o:from-string "Still outside the drawer
+:DRAWERNAME:
+This is inside the drawer.
+:END:
+After the drawer.")))))
+    (of-type o::paragraph (aref v 0))
+    (of-type o::drawer (aref v 1))
+    (of-type o::paragraph (aref v 2))))
 
 (define-test comments
   :parent blocks

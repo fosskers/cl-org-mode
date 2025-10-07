@@ -70,6 +70,14 @@ Secret contents.
 
 After.
 
+* Squished Paragraph
+
+First line.
+#+begin_example
+Complex object
+#+end_example
+Second line.
+
 * A simple list
 
 Things to do:

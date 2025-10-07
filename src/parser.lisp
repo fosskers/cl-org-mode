@@ -281,9 +281,16 @@ Yes."))
 
 ;; --- Blocks --- ;;
 
-(defun block (offset)
+(defun complex-object (offset)
   "Parser: All the major org-mode 'objects' that can appear in a section of text."
-  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'drawer #'paragraph) offset))
+  (funcall (p:alt #'complex-object-not-drawer #'drawer) offset))
+
+(defun complex-object-not-drawer (offset)
+  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing) offset))
+
+(defun block (offset)
+  "Parser: A complex object or a plain paragraph."
+  (funcall (p:alt #'complex-object #'paragraph) offset))
 
 #+nil
 (p:parse #'block "(/Markup/).")
@@ -296,7 +303,7 @@ Yes."))
 ;; Note also that blocks within drawers can't contain other drawers.
 (defun block-in-drawer (offset)
   "Parser: Like `block', but can't contain other drawers."
-  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'paragraph-in-drawer) offset))
+  (funcall (p:alt #'complex-object-not-drawer #'paragraph-in-drawer) offset))
 
 (defun listing (offset)
   (funcall (depth-sensitive-listing -1) offset))
@@ -566,7 +573,9 @@ B*")
 encountered."
   (p:fmap (lambda (lists) (make-paragraph :words (coerce (apply #'append lists) 'vector)))
           (funcall (p:sep-end1 +newline+
-                               (*> (p:not #'heading) #'line))
+                               (*> (p:not #'heading)
+                                   (p:not #'complex-object)
+                                   #'line))
                    offset)))
 
 #+nil
@@ -594,6 +603,7 @@ is encountered."
           (funcall (p:sep-end1 +newline+
                                (*> (p:not #'heading)
                                    (p:not +end+)
+                                   (p:not #'complex-object-not-drawer)
                                    #'line))
                    offset)))
 
@@ -1264,6 +1274,13 @@ Great content.
 
 More!
 :END:")
+
+#+nil
+(p:parse #'file "Still outside the drawer
+:DRAWERNAME:
+This is inside the drawer.
+:END:
+After the drawer.")
 
 ;; NOTE: 2025-10-08 Given a stunted name in order to avoid clashing with the
 ;; `drawer' struct accessor of the true name.
