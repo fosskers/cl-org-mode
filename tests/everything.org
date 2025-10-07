@@ -60,6 +60,16 @@ This [[https://www.fosskers.ca][Link has /markup/ in it]]
 
 さぁ日本語も入れたらどうなる？
 
+* Drawers
+
+This is some text.
+
+:CUSTOMDRAWER:
+Secret contents.
+:END:
+
+After.
+
 * A simple list
 
 Things to do:

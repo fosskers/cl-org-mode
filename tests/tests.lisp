@@ -56,8 +56,11 @@ SCHEDULED: <2025-09-01>"))
 
 (define-test paragraphs
   :parent blocks
-  (is string= "A" (car (p:parse #'o::line "A
-B")))
+  ;; `words' shouldn't parse an empty line.
+  (fail (p:parse #'o::words "
+"))
+  (is equalp '("A") (p:parse #'o::line "A
+B"))
   (is = 6 (length (o:paragraph-words (p:parse #'o::paragraph "First line.
 Second line.
 Third line.
@@ -66,6 +69,24 @@ Fourth line - shouldn't parse!"))))
   (is = 2 (length (o:paragraph-words (p:parse #'o::paragraph "Last line.
 *** A header!
 Paragraph of next section.")))))
+
+(define-test drawers
+  :parent blocks
+  (fail (p:parse #'o::drawer ":MYDRAWER:
+Hi"))
+  (finish (p:parse #'o::drawer ":MYDRAWER:
+:END:"))
+  (finish (p:parse #'o::drawer ":MYDRAWER:
+Great content.
+This line too.
+:END:"))
+  (finish (p:parse #'o::drawer ":MYDRAWER:
+Great content.
+
+[[https://www.fosskers.ca]]
+
+More!
+:END:")))
 
 (define-test comments
   :parent blocks

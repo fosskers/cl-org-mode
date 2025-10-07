@@ -282,10 +282,21 @@ Yes."))
 ;; --- Blocks --- ;;
 
 (defun block (offset)
-  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'paragraph) offset))
+  "Parser: All the major org-mode 'objects' that can appear in a section of text."
+  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'drawer #'paragraph) offset))
 
 #+nil
 (p:parse #'block "(/Markup/).")
+
+;; NOTE: 2025-10-08 As with `paragraph-in-drawer', this is explicitly duplicated
+;; for performance / code organization reasons. Since the generalization cases
+;; for `paragraph' are O(c) in number, we need not make it fully parameterized.
+;; This should also help me keep track of things easier within tracing results.
+;;
+;; Note also that blocks within drawers can't contain other drawers.
+(defun block-in-drawer (offset)
+  "Parser: Like `block', but can't contain other drawers."
+  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'paragraph-in-drawer) offset))
 
 (defun listing (offset)
   (funcall (depth-sensitive-listing -1) offset))
@@ -572,6 +583,19 @@ Fourth line - shouldn't parse!")
 (p:parse #'paragraph "Last line.
 *** A header!
 Paragraph of next section.")
+
+;; NOTE: 2025-10-08 At first glance it appears strange that this is mostly
+;; duplicated from `paragraph', but I've done so for ergonomic / performance /
+;; code organization reasons. See also `block'.
+(defun paragraph-in-drawer (offset)
+  "A single body of text which runs until a double-newline, header, or drawer :END:
+is encountered."
+  (p:fmap (lambda (lists) (make-paragraph :words (coerce (apply #'append lists) 'vector)))
+          (funcall (p:sep-end1 +newline+
+                               (*> (p:not #'heading)
+                                   (p:not +end+)
+                                   #'line))
+                   offset)))
 
 ;; FIXME: 2025-09-01 Account for internal markup?
 (defun quote (offset)
@@ -1210,3 +1234,46 @@ and not the second.")
 
 #+nil
 (p:parse #'attr-pair "#+ATTR_HTML: :title foo")
+
+(defun drawer (offset)
+  "Parser: Any kind of drawer."
+  (funcall (p:ap (lambda (label content)
+                   (make-drawer :label label :content (list->vector content)))
+                 (<* #'drawer-labl +consume-junk+)
+                 (<* (p:sep-end +consume-junk+
+                                (*> (p:not +end+) #'block-in-drawer))
+                     +consume-junk+
+                     +end+))
+           offset))
+
+#+nil
+(p:parse #'drawer ":MYDRAWER:
+:END:")
+
+#+nil
+(p:parse #'drawer ":MYDRAWER:
+Great content.
+This line too.
+:END:")
+
+#+nil
+(p:parse #'drawer ":MYDRAWER:
+Great content.
+
+[[https://www.fosskers.ca]]
+
+More!
+:END:")
+
+;; NOTE: 2025-10-08 Given a stunted name in order to avoid clashing with the
+;; `drawer' struct accessor of the true name.
+(defun drawer-labl (offset)
+  (funcall (p:between +colon+
+                      (p:take-while1 (lambda (c) (not (char= c #\colon))))
+                      +colon+)
+           offset))
+
+#+nil
+(p:parse #'drawer-labl ":MYDRAWER:
+Content
+:END:")

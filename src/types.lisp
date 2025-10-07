@@ -79,6 +79,11 @@ as tables and image links."
   "An ordinary body of text."
   (words nil :type (vector words)))
 
+(defstruct drawer
+  "A block of some hidable contents."
+  (label   nil :type string)
+  (content nil :type (vector (and block (not drawer)))))
+
 (defstruct section
   "A section or subsection, marked by a heading line and followed recursively by other documents."
   (heading  nil :type heading)
