@@ -105,7 +105,8 @@ as tables and image links."
   ;; A timestamp for general events that are neither a DEADLINE nor SCHEDULED.
   (timestamp  nil :type (or null timestamp))
   ;; An assoc-list.
-  (properties nil :type list))
+  (properties nil :type list)
+  (logbook    nil :type list))
 
 (defstruct todo
   "A marker like TODO or DONE. These are customizable by the user, so we can't

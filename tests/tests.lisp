@@ -94,7 +94,18 @@ This is inside the drawer.
 After the drawer.")))))
     (of-type o::paragraph (aref v 0))
     (of-type o::drawer (aref v 1))
-    (of-type o::paragraph (aref v 2))))
+    (of-type o::paragraph (aref v 2)))
+  (finish (p:parse #'o::properties ":PROPERTIES:
+:END:"))
+  (finish (p:parse #'o::properties ":PROPERTIES:
+:Yes: Fun
+:END:"))
+  (finish (p:parse #'o::logbook ":LOGBOOK:
+:END:"))
+  (finish (p:parse #'o::logbook ":LOGBOOK:
+CLOCK: [2025-10-08 Mi 04:50]--[2025-10-08 Mi 06:20] =>  1:30
+CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
+:END:")))
 
 (define-test comments
   :parent blocks
@@ -152,4 +163,5 @@ B"))
   (finish (o:from-file "tests/src.org"))
   (finish (o:from-file "tests/tables.org"))
   (finish (o:from-file "tests/lists.org"))
+  (finish (o:from-file "tests/headings.org"))
   (finish (o:from-file "tests/everything.org")))

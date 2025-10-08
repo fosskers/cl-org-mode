@@ -61,6 +61,7 @@
 (defparameter +deadline+  (p:string "DEADLINE:"))
 (defparameter +closed+    (p:string "CLOSED:"))
 (defparameter +properties+ (p:string ":PROPERTIES:"))
+(defparameter +logbook+ (p:string ":LOGBOOK:"))
 (defparameter +end+        (p:string ":END:"))
 (defparameter +label-start+ (p:string "#+"))
 (defparameter +results-start+ (p:string "#+RESULTS:"))
@@ -842,7 +843,7 @@ Now the second thing.
 (p:parse (depth-sensitive-heading 2) "* Simplest")
 
 (defun heading (offset)
-  (funcall (p:ap (lambda (depth todo priority text progress tags tss ts ps)
+  (funcall (p:ap (lambda (depth todo priority text progress tags tss ts ps log)
                    (make-heading :depth depth
                                  :todo todo
                                  :priority priority
@@ -853,7 +854,8 @@ Now the second thing.
                                  :deadline (getf tss :deadline)
                                  :scheduled (getf tss :scheduled)
                                  :timestamp ts
-                                 :properties ps))
+                                 :properties ps
+                                 :logbook log))
                  (<* #'bullets-of-heading
                      +space+
                      +consume-space+)
@@ -869,7 +871,9 @@ Now the second thing.
                                        #'timestamp
                                        +angle-close+)))
                  (p:opt (*> +consume-between-a-line+
-                            #'properties)))
+                            #'properties))
+                 (p:opt (*> +consume-between-a-line+
+                            #'logbook)))
            offset))
 
 #+nil
@@ -896,6 +900,19 @@ CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28
 :Yes: Fun
 :END:
 ")
+
+#+nil
+(p:parse #'heading "** org-mode :org:
+:PROPERTIES:
+:GREAT:    PANCAKES
+:END:
+:LOGBOOK:
+CLOCK: [2025-10-08 Mi 04:50]
+CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
+CLOCK: [2025-10-06 Mo 07:01]--[2025-10-06 Mo 07:53] =>  0:52
+:END:
+
+Content")
 
 (defun bullets-of-heading (offset)
   "Parser: Just skips over the *."
@@ -993,12 +1010,12 @@ in order to avoid parsing the normal word A as a TODO-like token."
   "Parser: A PROPERTIES drawer."
   (funcall (*> +properties+
                +consume-between-a-line+
-               (<* (p:sep-end1 +consume-between-a-line+
-                               (p:pair (p:between +colon+
-                                                  (p:take-while1 (lambda (c) (not (char= c #\:))))
-                                                  +colon+)
-                                       (*> +consume-space+
-                                           (p:take-while1 (lambda (c) (not (char= c #\newline)))))))
+               (<* (p:sep-end +consume-between-a-line+
+                              (p:pair (p:between +colon+
+                                                 (p:take-while1 (lambda (c) (not (char= c #\:))))
+                                                 +colon+)
+                                      (*> +consume-space+
+                                          (p:take-while1 (lambda (c) (not (char= c #\newline)))))))
                    +end+))
            offset))
 
@@ -1006,6 +1023,23 @@ in order to avoid parsing the normal word A as a TODO-like token."
 (p:parse #'properties ":PROPERTIES:
 :Yes: Fun
 :Thing: Value of it
+:END:
+")
+
+(defun logbook (offset)
+  "Parser: A LOGBOOK drawer."
+  (funcall (*> +logbook+
+               +consume-between-a-line+
+               (<* (p:sep-end +consume-between-a-line+
+                              (*> (p:not +end+) +take1-til-end+))
+                   +end+))
+           offset))
+
+#+nil
+(p:parse #'logbook ":LOGBOOK:
+CLOCK: [2025-10-09 Do 06:33]
+CLOCK: [2025-10-08 Mi 04:50]--[2025-10-08 Mi 06:20] =>  1:30
+CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
 :END:
 ")
 
