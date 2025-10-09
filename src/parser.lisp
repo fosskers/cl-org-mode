@@ -66,6 +66,7 @@
 (defparameter +logbook+ (p:string ":LOGBOOK:"))
 (defparameter +clock+ (p:string "CLOCK:"))
 (defparameter +end+        (p:string ":END:"))
+(defparameter +footnote-start+ (p:string "[fn:"))
 (defparameter +label-start+ (p:string "#+"))
 (defparameter +results-start+ (p:string "#+RESULTS:"))
 (defparameter +caption-start+ (p:alt (p:string "#+CAPTION") (p:string "#+caption")))
@@ -1374,3 +1375,30 @@ After the drawer.")
 (p:parse #'drawer-labl ":MYDRAWER:
 Content
 :END:")
+
+(defun footnote (offset)
+  "Parser: A full, standalone fullnote."
+  (funcall (p:ap (lambda (label content)
+                   (make-footnote :label label
+                                  :content (coerce (apply #'append content) 'vector)))
+                 (p:between +footnote-start+
+                            (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                            (not (char= c #\newline))
+                                                            (not (char= c #\])))))
+                            +bracket-close+)
+                 (*> +consume-space+
+                     (p:sep-end1 +newline+
+                                 (*> (p:not #'heading)
+                                     (p:not #'footnote)
+                                     #'line))))
+
+           offset))
+
+#+nil
+(p:parse #'footnote "[fn:50] See also Jung's /Symbole der Wandlung/.")
+
+#+nil
+(p:parse #'footnote "[fn:50] See also Jung's /Symbole der Wandlung/,
+a book I am referencing but have not read myself.
+
+This last line should not be part of the footnote.")

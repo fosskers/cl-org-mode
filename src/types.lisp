@@ -29,7 +29,7 @@ by zero or more subsections."
 
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
-  '(or comment quote example code result listing table paragraph))
+  '(or comment quote example code result listing table footnote paragraph))
 
 (defstruct quote
   "A quote block."
@@ -83,6 +83,20 @@ as tables and image links."
   "A block of some hidable contents."
   (label   nil :type string)
   (content nil :type (vector (and block (not drawer)))))
+
+(defstruct footnote
+  "Some reference to external material.
+
+Example:
+
+[fn:50] See also Jung's /Symbole der Wandlung/."
+  (label   nil :type string)
+  (content nil :type (vector words)))
+
+(defstruct footnote-ref
+  "A reference to a full footnote, typically defined somewhere else."
+  (label   nil :type (or null string))
+  (content nil :type (or null (vector words))))
 
 (defstruct section
   "A section or subsection, marked by a heading line and followed recursively by other documents."
