@@ -1209,7 +1209,8 @@ and not the second.")
            offset))
 
 (defun plain-in-link (offset)
-  "Parser: Like `plain', but constrained to the conditions of a link description."
+  "Parser: Like `plain', but constrained to the conditions of a link description
+or footnote reference."
   (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
                                                (char= c #\])))))
            offset))
@@ -1402,3 +1403,37 @@ Content
 a book I am referencing but have not read myself.
 
 This last line should not be part of the footnote.")
+
+(defun footnote-ref (offset)
+  (funcall (p:alt #'footnote-simple-ref #'footnote-inline-ref) offset))
+
+(defun footnote-simple-ref (offset)
+  "Parser: A reference to a footnote that is defined somewhere else."
+  (funcall (p:ap (lambda (label) (make-footnote-simple-ref :label label))
+                 (p:between +footnote-start+
+                            (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                            (not (char= c #\newline))
+                                                            (not (char= c #\])))))
+                            +bracket-close+))
+           offset))
+
+#+nil
+(p:parse #'footnote-simple-ref "[fn:50]")
+
+(defun footnote-inline-ref (offset)
+  "Parser: An inline reference with no corresponding external footnote."
+  (funcall (p:ap (lambda (label content)
+                   (make-footnote-inline-ref :label label :content content))
+                 (*> +footnote-start+
+                     (p:take-while (lambda (c) (and (not (char= c #\space))
+                                                    (not (char= c #\newline))
+                                                    (not (char= c #\:))))))
+                 (*> +colon+
+                     +consume-space+
+                     (<* #'link-description +bracket-close+)))
+           offset))
+
+#+nil
+(p:parse #'footnote-inline-ref "[fn:: This is the *inline* reference]")
+#+nil
+(p:parse #'footnote-inline-ref "[fn:1: This is the *inline* reference]")

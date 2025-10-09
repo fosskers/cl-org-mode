@@ -70,6 +70,12 @@ Secret contents.
 
 After.
 
+* Footnotes
+
+I am reading The Origins and History of Consciousness[fn:1] at the moment. 
+
+[fn:1] See also his other work /The Great Mother/.
+
 * Squished Paragraph
 
 First line.

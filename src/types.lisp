@@ -93,10 +93,16 @@ Example:
   (label   nil :type string)
   (content nil :type (vector words)))
 
-(defstruct footnote-ref
+(deftype footnote-ref ()
+  '(or footnote-simple-ref footnote-inline-ref))
+
+(defstruct footnote-simple-ref
   "A reference to a full footnote, typically defined somewhere else."
+  (label nil :type string))
+
+(defstruct footnote-inline-ref
   (label   nil :type (or null string))
-  (content nil :type (or null (vector words))))
+  (content nil :type (vector words)))
 
 (defstruct section
   "A section or subsection, marked by a heading line and followed recursively by other documents."
