@@ -57,7 +57,7 @@ by zero or more subsections."
   (type  nil :type (member
                     :bulleted :plussed :numbered :numpar :letter-small
                     :letter-big :letter-par-small :letter-par-big))
-  (items nil :type (vector item)))
+  (items nil :type (vector list-item)))
 
 (defstruct table
   "A group of cells forming a chart."
@@ -106,7 +106,18 @@ as tables and image links."
   (timestamp  nil :type (or null timestamp))
   ;; An assoc-list.
   (properties nil :type list)
-  (logbook    nil :type list))
+  (logbook    nil :type (vector logbook-item)))
+
+(defstruct logbook-item
+  "An entry in a LOGBOOK drawer."
+  (start nil :type timestamp)
+  (end   nil :type (or null timestamp))
+  (total nil :type (or null total)))
+
+(defstruct total
+  "The total time of a logbook item."
+  (hours   nil :type fixnum)
+  (minutes nil :type fixnum))
 
 (defstruct todo
   "A marker like TODO or DONE. These are customizable by the user, so we can't
@@ -134,7 +145,7 @@ caps."
   (numerator   nil :type fixnum)
   (denominator nil :type fixnum))
 
-(defstruct item
+(defstruct list-item
   "A line in a listing. Can contain sublists."
   (status   nil :type (or null (member :open :progress :done)))
   (words    nil :type (vector words))

@@ -141,18 +141,18 @@ CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
   (is = 2 (length (o::listing-items (p:parse #'o::listing "- A
   1. B
 - C"))))
-  (is equalp #("A" "B") (o::item-words (aref (o::listing-items (p:parse #'o::listing "- A
+  (is equalp #("A" "B") (o::list-item-words (aref (o::listing-items (p:parse #'o::listing "- A
   B"))
-                                             0)))
-  (is equalp #("A") (o::item-words (aref (o::listing-items (p:parse #'o::listing "- A
+                                                  0)))
+  (is equalp #("A") (o::list-item-words (aref (o::listing-items (p:parse #'o::listing "- A
 B"))
-                                         0)))
-  (of-type o::ratio (o::item-progress (aref (o::listing-items (p:parse (p:<* #'o::listing #'p:eof) "- A [1/2]"))
-                                            0)))
-  (of-type o::ratio (o::item-progress (aref (o::listing-items (p:parse (p:<* #'o::listing #'p:eof) "- A [1/2]
+                                              0)))
+  (of-type o::ratio (o::list-item-progress (aref (o::listing-items (p:parse (p:<* #'o::listing #'p:eof) "- A [1/2]"))
+                                                 0)))
+  (of-type o::ratio (o::list-item-progress (aref (o::listing-items (p:parse (p:<* #'o::listing #'p:eof) "- A [1/2]
   - B
   - C"))
-                                            0))))
+                                                 0))))
 
 (define-test files)
 

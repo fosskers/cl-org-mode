@@ -45,6 +45,8 @@
 (defparameter +capital-x+ (p:char #\X))
 (defparameter +colon+ (p:char #\:))
 (defparameter +dash+  (p:char #\-))
+(defparameter +dashes+  (p:string "--"))
+(defparameter +arrow+  (p:string "=>"))
 (defparameter +equal+ (p:char #\=))
 (defparameter +plus+  (p:char #\+))
 (defparameter +slash+ (p:char #\/))
@@ -62,6 +64,7 @@
 (defparameter +closed+    (p:string "CLOSED:"))
 (defparameter +properties+ (p:string ":PROPERTIES:"))
 (defparameter +logbook+ (p:string ":LOGBOOK:"))
+(defparameter +clock+ (p:string "CLOCK:"))
 (defparameter +end+        (p:string ":END:"))
 (defparameter +label-start+ (p:string "#+"))
 (defparameter +results-start+ (p:string "#+RESULTS:"))
@@ -100,7 +103,7 @@
 ;; --- Utilities --- ;;
 
 (defun consume-n (n p)
-  "Parser: A logical combination of `consume' and `take', such that only N-many
+  "Combinator: A logical combination of `consume' and `take', such that only N-many
 of the to-be-consumed characters are consumed."
   (lambda (offset)
     (declare (optimize (speed 3) (safety 0)))
@@ -114,6 +117,18 @@ of the to-be-consumed characters are consumed."
 
 #+nil
 (p:parse (consume-n 3 (lambda (c) (char= c #\a))) "aabbb")
+
+(defun valid (pred par)
+  "Combinator: The result of a given parser must pass a certain predicate,
+or the parse will fail."
+  (lambda (offset)
+    (multiple-value-bind (res next) (funcall par offset)
+      (cond ((p:failure? res) (p:fail next))
+            ((not (funcall pred res)) (p:fail offset))
+            (t (values res next))))))
+
+#+nil
+(p:parse (valid (lambda (n) (> n 5)) #'p:unsigned) "2")
 
 ;; --- Whole Files --- ;;
 
@@ -385,14 +400,14 @@ B*")
   (lambda (offset)
     (funcall
      (p:ap (lambda (status words progress sublist)
-             (make-item :status status
-                        :words (apply #'concatenate 'vector words)
-                        :progress progress
-                        :sublist sublist))
+             (make-list-item :status status
+                             :words (apply #'concatenate 'vector words)
+                             :progress progress
+                             :sublist sublist))
            (*> (consume-n depth (lambda (c) (char= c #\space)))
                #'list-bullet
                +space+ +consume-space+
-               (p:opt #'list-item-status))
+               (p:opt #'status-of-list-item))
            (*> +consume-space+
                (p:sep1
                 (*> +newline+
@@ -437,7 +452,7 @@ B*")
 #+nil
 (p:parse (list-item 0) "- Hello there [1/2]")
 
-(defun list-item-status (offset)
+(defun status-of-list-item (offset)
   (funcall (p:between +bracket-open+
                       (p:alt (<$ :open +space+)
                              (<$ :progress +dash+)
@@ -771,13 +786,20 @@ Now the second thing.
 (defun closed (offset)
   (funcall (*> +closed+
                +consume-space+
-               (p:between +bracket-open+
-                          #'timestamp
-                          +bracket-close+))
+               #'bracketed-timestamp)
            offset))
 
 #+nil
 (p:parse #'closed "CLOSED: [2021-04-30 Fri 12:34]")
+
+(defun bracketed-timestamp (offset)
+  (funcall (p:between +bracket-open+
+                      #'timestamp
+                      +bracket-close+)
+           offset))
+
+#+nil
+(p:parse #'bracketed-timestamp "[2021-04-30 Fri 12:34]")
 
 (defun timestamp (offset)
   (funcall (p:ap (lambda (day dow time repeat delay)
@@ -855,7 +877,7 @@ Now the second thing.
                                  :scheduled (getf tss :scheduled)
                                  :timestamp ts
                                  :properties ps
-                                 :logbook log))
+                                 :logbook (or log (vector))))
                  (<* #'bullets-of-heading
                      +space+
                      +consume-space+)
@@ -1028,11 +1050,12 @@ in order to avoid parsing the normal word A as a TODO-like token."
 
 (defun logbook (offset)
   "Parser: A LOGBOOK drawer."
-  (funcall (*> +logbook+
-               +consume-between-a-line+
-               (<* (p:sep-end +consume-between-a-line+
-                              (*> (p:not +end+) +take1-til-end+))
-                   +end+))
+  (funcall (p:ap #'list->vector
+                 (*> +logbook+
+                     +consume-between-a-line+
+                     (<* (p:sep-end +consume-between-a-line+
+                                    (*> (p:not +end+) #'logbook-item))
+                         +end+)))
            offset))
 
 #+nil
@@ -1040,8 +1063,37 @@ in order to avoid parsing the normal word A as a TODO-like token."
 CLOCK: [2025-10-09 Do 06:33]
 CLOCK: [2025-10-08 Mi 04:50]--[2025-10-08 Mi 06:20] =>  1:30
 CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
-:END:
-")
+:END:")
+
+(defun logbook-item (offset)
+  "Parser: A single item of a LOGBOOK drawer."
+  (funcall (p:ap (lambda (start end total) (make-logbook-item :start start :end end :total total))
+                 (*> +clock+ +consume-space+ #'bracketed-timestamp)
+                 ;; FIXME: 2025-10-10 Technically it's naughty that these two
+                 ;; are `opt' separately.
+                 (p:opt (*> +dashes+ #'bracketed-timestamp))
+                 (p:opt (*> +consume-space+ +arrow+ +consume-space+ #'total-time)))
+           offset))
+
+#+nil
+(p:parse #'logbook-item "CLOCK: [2025-10-09 Do 06:33]")
+
+#+nil
+(p:parse #'logbook-item "CLOCK: [2025-10-08 Mi 04:50]--[2025-10-08 Mi 06:20] =>  1:30")
+
+(defun total-time (offset)
+  "Parser: The total time of a logbook item."
+  (funcall (p:ap (lambda (hours mins) (make-total :hours hours :minutes mins))
+                 #'p:unsigned
+                 (*> +colon+
+                     (p:opt +zero+)
+                     (valid (lambda (n) (< n 60)) #'p:unsigned)))
+           offset))
+
+#+nil
+(p:parse #'total-time "0:01")
+#+nil
+(p:parse #'total-time "0:60")
 
 ;; --- Text Markup --- ;;
 
