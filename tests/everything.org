@@ -60,6 +60,8 @@ This [[https://www.fosskers.ca][Link has /markup/ in it]]
 
 さぁ日本語も入れたらどうなる？
 
+Does*this*markup? No it doesn't.
+
 * Drawers
 
 This is some text.
@@ -70,11 +72,11 @@ Secret contents.
 
 After.
 
-* Footnotes
+* Testing Footnotes
 
 I am reading The Origins and History of Consciousness[fn:1] at the moment. 
 
-[fn:1] See also his other work /The Great Mother/.
+Yes [fn:2] indeed, the reference can be free-floating.
 
 * Squished Paragraph
 
@@ -147,13 +149,13 @@ I think (*we should* be bold *about*) our decisions.
 |-------+-----------+--------|
 |       | [[./img.png]] |        |
 
-|   | Person | Apples |
-|---+--------+--------|
-| # | Joe    |      5 |
-| # | Sam    |      7 |
-|---+--------+--------|
-| # | Total  |     12 |
-| ^ |        |  total |
+|   | Person[fn:3] | Apples |
+|---+----------+--------|
+| # | Joe      |      5 |
+| # | Sam      |      7 |
+|---+----------+--------|
+| # | Total    |     12 |
+| ^ |          |  total |
 #+TBLFM: $total=vsum(@I..@II)
 
 * Parens
@@ -163,3 +165,9 @@ I think (*we should* be bold *about*) our decisions.
 * The End
 
 Farewell.
+
+* Footnotes
+
+[fn:1] See also his other work /The Great Mother/.
+[fn:2] All the footnotes automatically go here.
+[fn:3] Sometimes called "People".

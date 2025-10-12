@@ -268,6 +268,14 @@ Stuff")
              offset)))
 
 #+nil
+(p:parse (document 0) "Hello.
+
+[fn:1] Something profound
+and multilined with even another ref[fn:2].
+
+Bye.")
+
+#+nil
 (p:parse (document 0) "*Bold text* and not a heading.
 
 This should really just be a paragraph.
@@ -303,7 +311,7 @@ Yes."))
   (funcall (p:alt #'complex-object-not-drawer #'drawer) offset))
 
 (defun complex-object-not-drawer (offset)
-  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing) offset))
+  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'footnote) offset))
 
 (defun block (offset)
   "Parser: A complex object or a plain paragraph."
@@ -1115,7 +1123,7 @@ and not the second.")
 
 (defun markup (offset)
   "Parser: Some non-plain markup object."
-  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'punct)
+  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'footnote-ref #'punct)
            offset))
 
 (defun words (offset)
@@ -1193,6 +1201,21 @@ and not the second.")
 #+nil
 (p:parse #'strike "+hello+")
 
+;; NOTE: 2025-10-12 Previously this was a simple `take-while1', but the
+;; discovery of Footnotes necessitated that `plain' here must account for the
+;; potential presence of a Footnote Reference directly attached to it.
+(defun plain (offset)
+  "Parser: A single, unadorned word."
+  (funcall (p:recognize (*> (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                            (not (char= c #\newline))
+                                                            (not (char= c #\[)))))
+                            (p:opt (*> (p:not #'footnote-ref)
+                                       +bracket-open+
+                                       (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                                       (not (char= c #\newline)))))))))
+           offset))
+
+#+nil
 (defun plain (offset)
   "Parser: A single, unadorned word."
   (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
@@ -1201,6 +1224,10 @@ and not the second.")
 
 #+nil
 (p:parse #'plain "hello there")
+#+nil
+(p:parse #'plain "Hello[a]")
+#+nil
+(p:parse (p:ap #'cons #'plain #'footnote-ref) "Hello[fn:1]")
 
 (defun plain-in-cell (offset)
   "Parser: Like `plain', but constrained to the conditions of a table cell."
@@ -1403,6 +1430,11 @@ Content
 a book I am referencing but have not read myself.
 
 This last line should not be part of the footnote.")
+
+;; TODO: 2025-10-10 Start here. Figure out the proper place to actually parse
+;; these references in relation to how/where a `plain' is parsed. Through
+;; experimentation it seems like the reference can appear both immediately
+;; attached to a word, but also be free-floating.
 
 (defun footnote-ref (offset)
   (funcall (p:alt #'footnote-simple-ref #'footnote-inline-ref) offset))
