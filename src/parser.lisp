@@ -58,6 +58,7 @@
 (defparameter +pipe+  (p:char #\|))
 (defparameter +paren+ (p:char #\)))
 (defparameter +period+ (p:char #\.))
+(defparameter +horizontal+ (p:string "-----"))
 (defparameter +newline+ (p:char #\newline))
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
@@ -314,7 +315,7 @@ Yes."))
   (funcall (p:alt #'complex-object-not-drawer #'drawer) offset))
 
 (defun complex-object-not-drawer (offset)
-  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'footnote) offset))
+  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'footnote #'horizontal-line) offset))
 
 (defun block (offset)
   "Parser: A complex object or a plain paragraph."
@@ -1472,3 +1473,13 @@ This last line should not be part of the footnote.")
 (p:parse #'footnote-inline-ref "[fn:: This is the *inline* reference]")
 #+nil
 (p:parse #'footnote-inline-ref "[fn:1: This is the *inline* reference]")
+
+(defun horizontal-line (offset)
+  "Parser: A horizontal line of at least 5 dashes."
+  (multiple-value-bind (res next)
+      (funcall (*> +horizontal+ (p:consume (lambda (c) (char= c #\-)))) offset)
+    (cond ((p:ok? res) (values (make-horizontal-line) next))
+          (t (p:fail offset)))))
+
+#+nil
+(p:parse #'horizontal-line "----------")
