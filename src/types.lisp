@@ -69,6 +69,11 @@ by zero or more subsections."
   ;; A TBLFM (table formula).
   (form    nil :type (or null string)))
 
+(defstruct clock-table
+  "An auto-generated clocktable object."
+  (settings nil :type string)
+  (table    nil :type table))
+
 (defstruct caption
   "Additional commentary that can appear before a number of structures, such
 as tables and image links."

@@ -78,6 +78,9 @@
 (defparameter +octothorp+ (p:char #\#))
 (defparameter +bracket-open+  (p:char #\[))
 (defparameter +bracket-close+ (p:char #\]))
+(defparameter +clocktable-begin+ (p:string "#+BEGIN:"))
+(defparameter +clocktable-label+ (p:string "clocktable"))
+(defparameter +clocktable-end+ (p:string "#+END:"))
 (defparameter +quote-open+ (p:alt (p:string "#+BEGIN_QUOTE") (p:string "#+begin_quote")))
 (defparameter +quote-close+ (p:alt (p:string "#+END_QUOTE") (p:string "#+end_quote")))
 (defparameter +example-open+ (p:alt (p:string "#+BEGIN_EXAMPLE") (p:string "#+begin_example")))
@@ -564,6 +567,28 @@ B*")
 
 #+nil
 (p:parse #'cell "hello *there* sir |")
+
+(defun clock-table (offset)
+  "Parser: An auto-generated `clocktable' object."
+  (funcall (p:ap (lambda (settings table) (make-clock-table :settings settings :table table))
+                 (*> +clocktable-begin+
+                     +consume-space+
+                     +clocktable-label+
+                     +consume-space+
+                     (<* +take1-til-end+ +newline+))
+                 (<* #'table +clocktable-end+))
+           offset))
+
+#+nil
+(p:parse #'clock-table "#+BEGIN: clocktable :scope file :maxlevel 2
+#+CAPTION: Clock summary at [2025-10-12 So 12:06]
+| Headline                 | Time |      |
+|--------------------------+------+------|
+| *Total time*             | *1:08* |      |
+|--------------------------+------+------|
+| Tasks                    | 1:08 |      |
+| \_  Announce Nov Concert |      | 1:08 |
+#+END:")
 
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is

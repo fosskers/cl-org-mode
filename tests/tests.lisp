@@ -181,7 +181,16 @@ B"))
 | Sao Paolo |     71.00 |   11.50 |
 | Stockholm |    134.19 |   14.33 |
 | Morelia   |    257.56 |   17.67 |
-#+TBLFM: $total=vsum(@I..@II)")))
+#+TBLFM: $total=vsum(@I..@II)"))
+  (finish (p:parse #'o::clock-table "#+BEGIN: clocktable :scope file :maxlevel 2
+#+CAPTION: Clock summary at [2025-10-12 So 12:06]
+| Headline                 | Time |      |
+|--------------------------+------+------|
+| *Total time*             | *1:08* |      |
+|--------------------------+------+------|
+| Tasks                    | 1:08 |      |
+| \_  Announce Nov Concert |      | 1:08 |
+#+END:")))
 
 (define-test files)
 
