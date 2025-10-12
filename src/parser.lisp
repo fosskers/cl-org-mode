@@ -491,7 +491,7 @@ B*")
                                :rows (coerce rows 'vector)
                                :form form))
                  (p:opt (<* #'caption +consume-space+ +newline+))
-                 (p:opt (<* #'attrs +newline+))
+                 (p:opt #'attrs)
                  (p:opt (<* #'plot +newline+))
                  (p:opt (<* #'name +newline+))
                  (p:sep-end1 +newline+ #'row)
@@ -499,33 +499,11 @@ B*")
            offset))
 
 #+nil
-(p:parse #'table "| A | B | C |
-|---+---+---|
-| D |   | E |")
-
-#+nil
-(p:parse #'table "#+name: table
-| A | B | C |
-|---+---+---|
-| D |   | E |")
-
-#+nil
-(p:parse #'table "| A | B | C |
-|---+---+---|
-| D |   | E |
-#+TBLFM: $total=vsum(@I..@II)")
-
-#+nil
-(p:parse #'table "| A | *B* | C |
-|---+---+---|
-| D |   | E |")
-
-#+nil
 (p:parse #'table "#+CAPTION[short]: long
 #+ATTR_HTML: :border 2 :rules all :frame border
 #+PLOT: title:\"Citas\" ind:1 deps:(3) type:2d with:histograms set:\"yrange [0:]\"
 #+NAME: cities
-| Sede      | Max cites | H-index |
+| Sede[fn:1] | *Max* cities | H-index |
 |-----------+-----------+---------|
 | Chile     |    257.72 |   21.39 |
 | Leeds     |    165.77 |   19.68 |
@@ -1216,23 +1194,23 @@ and not the second.")
            offset))
 
 #+nil
-(defun plain (offset)
-  "Parser: A single, unadorned word."
-  (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
-                                               (char= c #\newline)))))
-           offset))
-
-#+nil
 (p:parse #'plain "hello there")
 #+nil
 (p:parse #'plain "Hello[a]")
 #+nil
 (p:parse (p:ap #'cons #'plain #'footnote-ref) "Hello[fn:1]")
 
+;; NOTE: 2025-10-12 Related to the above, table cells can also contain footnote
+;; references.
 (defun plain-in-cell (offset)
   "Parser: Like `plain', but constrained to the conditions of a table cell."
-  (funcall (p:take-while1 (lambda (c) (not (or (char= c #\space)
-                                               (char= c #\|)))))
+  (funcall (p:recognize (*> (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                            (not (char= c #\|))
+                                                            (not (char= c #\[)))))
+                            (p:opt (*> (p:not #'footnote-ref)
+                                       +bracket-open+
+                                       (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                                       (not (char= c #\|)))))))))
            offset))
 
 (defun plain-in-link (offset)

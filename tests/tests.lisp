@@ -154,6 +154,35 @@ B"))
   - C"))
                                                  0))))
 
+(define-test tables
+  :parent blocks
+  (finish (p:parse #'o::table "| A | B | C |
+|---+---+---|
+| D |   | E |"))
+  (finish (p:parse #'o::table "#+name: table
+| A | B | C |
+|---+---+---|
+| D |   | E |"))
+  (finish (p:parse #'o::table "| A | B | C |
+|---+---+---|
+| D |   | E |
+#+TBLFM: $total=vsum(@I..@II)"))
+  (finish (p:parse #'o::table "| A | *B* | C |
+|---+---+---|
+| D |   | E |"))
+  (finish (p:parse #'o::table "#+CAPTION[short]: long
+#+ATTR_HTML: :border 2 :rules all :frame border
+#+PLOT: title:\"Citas\" ind:1 deps:(3) type:2d with:histograms set:\"yrange [0:]\"
+#+NAME: cities
+| Sede      | Max cites | H-index |
+|-----------+-----------+---------|
+| Chile     |    257.72 |   21.39 |
+| Leeds     |    165.77 |   19.68 |
+| Sao Paolo |     71.00 |   11.50 |
+| Stockholm |    134.19 |   14.33 |
+| Morelia   |    257.56 |   17.67 |
+#+TBLFM: $total=vsum(@I..@II)")))
+
 (define-test files)
 
 (define-test parsing-files
