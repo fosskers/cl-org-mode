@@ -28,10 +28,18 @@ So we'll make /a second one/. How about some code?
 And a quote.
 
 #+begin_quote
-Always keep some cash on hand, you never know.
+Always keep some cash on hand, you _never_ know.
 
 - Albert Einstein
 #+end_quote
+
+#+begin_center
+Behold _centered_ text (when exported, anyway).
+#+end_center
+
+#+begin_example
+An fine example of _verbatim_ text.
+#+end_example
 
 ** Not a tag! :)
 

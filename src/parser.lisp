@@ -82,6 +82,8 @@
 (defparameter +clocktable-begin+ (p:string "#+BEGIN:"))
 (defparameter +clocktable-label+ (p:string "clocktable"))
 (defparameter +clocktable-end+ (p:string "#+END:"))
+(defparameter +center-open+ (p:alt (p:string "#+BEGIN_CENTER") (p:string "#+begin_center")))
+(defparameter +center-close+ (p:alt (p:string "#+END_CENTER") (p:string "#+end_center")))
 (defparameter +quote-open+ (p:alt (p:string "#+BEGIN_QUOTE") (p:string "#+begin_quote")))
 (defparameter +quote-close+ (p:alt (p:string "#+END_QUOTE") (p:string "#+end_quote")))
 (defparameter +example-open+ (p:alt (p:string "#+BEGIN_EXAMPLE") (p:string "#+begin_example")))
@@ -315,7 +317,7 @@ Yes."))
   (funcall (p:alt #'complex-object-not-drawer #'drawer) offset))
 
 (defun complex-object-not-drawer (offset)
-  (funcall (p:alt #'comment #'quote #'example #'code #'result #'table #'listing #'footnote #'horizontal-line) offset))
+  (funcall (p:alt #'comment #'quote #'example #'center #'code #'result #'table #'listing #'footnote #'horizontal-line) offset))
 
 (defun block (offset)
   "Parser: A complex object or a plain paragraph."
@@ -646,8 +648,17 @@ is encountered."
 (p:parse #'paragraph-in-quote "Hello
 #+END_QUOTE")
 
+(defun paragraph-in-center (offset)
+  "A single body of text which runs until a double-newline, header, or END_CENTER
+is encountered."
+  (paragraph-halted-by offset #'heading +center-close+))
+
+#+nil
+(p:parse #'paragraph-in-center "Hello
+#+END_CENTER")
+
 (defun quote (offset)
-  "Parser: A quote block."
+  "Parser: A Quote block."
   (funcall (p:ap (lambda (paragraphs) (make-quote :text (list->vector paragraphs)))
                  (p:between (*> +quote-open+ +consume-junk+)
                             (p:sep-end +consume-junk+ #'paragraph-in-quote)
@@ -666,15 +677,31 @@ is encountered."
 (p:parse #'quote "#+begin_quote
 #+end_quote")
 
+(defun center (offset)
+  "Parser: A Center block. When exported, the text therein should be centered."
+  (funcall (p:ap (lambda (paragraphs) (make-center :text (list->vector paragraphs)))
+                 (p:between (*> +center-open+ +consume-junk+)
+                            (p:sep-end +consume-junk+ #'paragraph-in-center)
+                            +center-close+))
+           offset))
+
+#+nil
+(p:parse #'center "#+begin_center
+人生遍路なり
+
+同行二人
+#+end_center")
+
 (defun example (offset)
-  "Parser: An example block."
-  (p:fmap (lambda (list) (make-example :text (coerce list 'vector)))
-          (funcall (p:between (*> +example-open+ +newline+)
-                              (p:sep-end +newline+
-                                         (*> (p:not +example-close+)
-                                             (p:take-while (lambda (c) (not (char= c #\newline))))))
-                              +example-close+)
-                   offset)))
+  "Parser: An Example block. Always contains verbatim text, so internal markup is
+interpreted as normal text."
+  (funcall (p:ap (lambda (list) (make-example :text (coerce list 'vector)))
+                 (p:between (*> +example-open+ +newline+)
+                            (p:sep-end +newline+
+                                       (*> (p:not +example-close+)
+                                           (p:take-while (lambda (c) (not (char= c #\newline))))))
+                            +example-close+))
+           offset))
 
 #+nil
 (p:parse #'example "#+begin_example
