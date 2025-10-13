@@ -131,6 +131,7 @@ Example:
   "The top line of a `section' with associated metadata."
   (depth      nil :type fixnum)
   (todo       nil :type (or null todo))
+  (commented  nil :type boolean)
   (priority   nil :type (or null priority))
   (text       nil :type (vector words))
   (progress   nil :type (or null progress))

@@ -60,6 +60,7 @@
 (defparameter +period+ (p:char #\.))
 (defparameter +horizontal+ (p:string "-----"))
 (defparameter +newline+ (p:char #\newline))
+(defparameter +comment+ (p:string "COMMENT"))
 (defparameter +scheduled+ (p:string "SCHEDULED:"))
 (defparameter +deadline+  (p:string "DEADLINE:"))
 (defparameter +closed+    (p:string "CLOSED:"))
@@ -952,9 +953,11 @@ Now the second thing.
 (p:parse (depth-sensitive-heading 2) "* Simplest")
 
 (defun heading (offset)
-  (funcall (p:ap (lambda (depth todo priority text progress tags tss ts ps log)
+  "Perhaps the busiest object in the whole library!"
+  (funcall (p:ap (lambda (depth todo commented priority text progress tags tss ts ps log)
                    (make-heading :depth depth
                                  :todo todo
+                                 :commented commented
                                  :priority priority
                                  :text text
                                  :progress progress
@@ -965,10 +968,15 @@ Now the second thing.
                                  :timestamp ts
                                  :properties ps
                                  :logbook (or log (vector))))
-                 (<* #'bullets-of-heading
-                     +space+
-                     +consume-space+)
-                 (p:opt (<* #'todo (p:sneak #\space)))
+                 (<* #'bullets-of-heading +space+)
+                 (*> +consume-space+ (p:opt (<* #'todo
+                                                (p:alt (p:sneak #\space)
+                                                       (p:sneak #\newline)
+                                                       (p:peek #'p:eof)))))
+                 (*> +consume-space+ (p:opt (<* (<$ t +comment+)
+                                                (p:alt (p:sneak #\space)
+                                                       (p:sneak #\newline)
+                                                       (p:peek #'p:eof)))))
                  (*> +consume-space+ (p:opt #'priority))
                  (*> +consume-space+ #'text-of-heading)
                  (*> +consume-space+ (p:opt #'progress))
@@ -996,6 +1004,18 @@ Now the second thing.
 
 #+nil
 (p:parse #'heading "** Not *a* tag! :)")
+
+#+nil
+(p:parse #'heading "* COMMENT Hidden subtree")
+
+#+nil
+(p:parse #'heading "* TODO COMMENT Hidden subtree")
+
+#+nil
+(p:parse #'heading "* COMMENT")
+
+#+nil
+(p:parse #'heading "* TODO")
 
 #+nil
 (p:parse #'heading "*** TODO [#A] Fix the code [1/2] :bug:
@@ -1034,10 +1054,14 @@ Content")
 
 (defun todo (offset)
   "Parser: A single capital word. The word must be at least two letters long
-in order to avoid parsing the normal word A as a TODO-like token."
+in order to avoid parsing the normal word A as a TODO-like token.
+
+Normally accepts any word, except for COMMENT, which is a reserved keyword
+within heading lines to prevent entire subtrees from being exported."
   (multiple-value-bind (res next)
-      (funcall (p:take-while1 (lambda (c) (and (not (char= c #\space))
-                                               (char<= #\A c #\Z))))
+      (funcall (*> (p:not +comment+)
+                   (p:take-while1 (lambda (c) (and (not (char= c #\space))
+                                                   (char<= #\A c #\Z)))))
                offset)
     (cond ((p:failure? res) (p:fail next))
           ((= 1 (length res)) (p:fail offset))
@@ -1059,15 +1083,17 @@ in order to avoid parsing the normal word A as a TODO-like token."
 
 (defun text-of-heading (offset)
   (p:fmap (lambda (list) (coerce list 'vector))
-          (funcall (p:sep-end1 (*> +consume-space+
-                                   (p:not (p:alt #'progress #'tags)))
-                               #'words)
+          (funcall (p:sep-end (*> +consume-space+
+                                  (p:not (p:alt #'progress #'tags)))
+                              #'words)
                    offset)))
 
 #+nil
 (p:parse #'text-of-heading "Hello there")
 #+nil
 (p:parse #'text-of-heading "Fix the code [1/2] :bug:")
+#+nil
+(p:parse #'text-of-heading "")
 
 (defun progress (offset)
   (funcall (p:alt #'percentage #'ratio) offset))
