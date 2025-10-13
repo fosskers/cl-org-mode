@@ -591,15 +591,27 @@ B*")
 | \_  Announce Nov Concert |      | 1:08 |
 #+END:")
 
+(defmacro paragraph-halted-by (offset &rest halting-parsers)
+  "It is handy for actual parsers themselves to be named functions that we can
+pass around in a higher-order way to other combinators, etc. But 'configurable',
+higher-order parsers themselves can invoke an unfortunate amount lambda
+allocation.
+
+This macro allows the halting condition of `paragraph' to be configured, as
+often a paragraph-like thing exists within some other complex object like a
+Drawer or a Quote block, etc."
+  `(funcall
+    (p:ap (lambda (lists)
+            (make-paragraph :words (coerce (apply #'append lists) 'vector)))
+          (p:sep-end1 +newline+
+                      (*> ,@(mapcar (lambda (hp) `(p:not ,hp)) halting-parsers)
+                          #'line)))
+    ,offset))
+
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is
 encountered."
-  (p:fmap (lambda (lists) (make-paragraph :words (coerce (apply #'append lists) 'vector)))
-          (funcall (p:sep-end1 +newline+
-                               (*> (p:not #'heading)
-                                   (p:not #'complex-object)
-                                   #'line))
-                   offset)))
+  (paragraph-halted-by offset #'heading #'complex-object))
 
 #+nil
 (p:parse #'paragraph "Single line.")
@@ -616,34 +628,36 @@ Fourth line - shouldn't parse!")
 *** A header!
 Paragraph of next section.")
 
-;; NOTE: 2025-10-08 At first glance it appears strange that this is mostly
-;; duplicated from `paragraph', but I've done so for ergonomic / performance /
-;; code organization reasons. See also `block'.
 (defun paragraph-in-drawer (offset)
   "A single body of text which runs until a double-newline, header, or drawer :END:
 is encountered."
-  (p:fmap (lambda (lists) (make-paragraph :words (coerce (apply #'append lists) 'vector)))
-          (funcall (p:sep-end1 +newline+
-                               (*> (p:not #'heading)
-                                   (p:not +end+)
-                                   (p:not #'complex-object-not-drawer)
-                                   #'line))
-                   offset)))
+  (paragraph-halted-by offset #'heading +end+ #'complex-object-not-drawer))
 
-;; FIXME: 2025-09-01 Account for internal markup?
+#+nil
+(p:parse #'paragraph-in-drawer "Hello
+:END:")
+
+(defun paragraph-in-quote (offset)
+  "A single body of text which runs until a double-newline, header, or END_QUOTE
+is encountered."
+  (paragraph-halted-by offset #'heading +quote-close+))
+
+#+nil
+(p:parse #'paragraph-in-quote "Hello
+#+END_QUOTE")
+
 (defun quote (offset)
   "Parser: A quote block."
-  (p:fmap (lambda (list) (make-quote :text (coerce list 'vector)))
-          (funcall (p:between (*> +quote-open+ +newline+)
-                              (p:sep-end +newline+
-                                         (*> (p:not +quote-close+)
-                                             (p:take-while (lambda (c) (not (char= c #\newline))))))
-                              +quote-close+)
-                   offset)))
+  (funcall (p:ap (lambda (paragraphs) (make-quote :text (list->vector paragraphs)))
+                 (p:between (*> +quote-open+ +consume-junk+)
+                            (p:sep-end +consume-junk+ #'paragraph-in-quote)
+                            +quote-close+))
+           offset))
 
 #+nil
 (p:parse #'quote "#+begin_quote
-人生遍路なり
+
+ _人生遍路なり_
 
 同行二人
 #+end_quote")
