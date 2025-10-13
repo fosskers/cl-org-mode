@@ -82,6 +82,8 @@
 (defparameter +clocktable-begin+ (p:string "#+BEGIN:"))
 (defparameter +clocktable-label+ (p:string "clocktable"))
 (defparameter +clocktable-end+ (p:string "#+END:"))
+(defparameter +comment-open+ (p:alt (p:string "#+BEGIN_COMMENT") (p:string "#+begin_comment")))
+(defparameter +comment-close+ (p:alt (p:string "#+END_COMMENT") (p:string "#+end_comment")))
 (defparameter +center-open+ (p:alt (p:string "#+BEGIN_CENTER") (p:string "#+begin_center")))
 (defparameter +center-close+ (p:alt (p:string "#+END_CENTER") (p:string "#+end_center")))
 (defparameter +quote-open+ (p:alt (p:string "#+BEGIN_QUOTE") (p:string "#+begin_quote")))
@@ -317,7 +319,16 @@ Yes."))
   (funcall (p:alt #'complex-object-not-drawer #'drawer) offset))
 
 (defun complex-object-not-drawer (offset)
-  (funcall (p:alt #'comment #'quote #'example #'center #'code #'result #'table #'listing #'footnote #'horizontal-line) offset))
+  (funcall (p:alt
+            ;; --- BEGIN/END Blocks --- ;;
+            #'comment #'quote #'example #'center #'complex-comment
+            ;; --- Code --- ;;
+            #'code #'result
+            ;; --- Complex Objects --- ;;
+            #'table #'listing
+            ;; --- Miscellaneous --- ;;
+            #'footnote #'horizontal-line)
+           offset))
 
 (defun block (offset)
   "Parser: A complex object or a plain paragraph."
@@ -326,10 +337,10 @@ Yes."))
 #+nil
 (p:parse #'block "(/Markup/).")
 
-;; NOTE: 2025-10-08 As with `paragraph-in-drawer', this is explicitly duplicated
-;; for performance / code organization reasons. Since the generalization cases
-;; for `paragraph' are O(c) in number, we need not make it fully parameterized.
-;; This should also help me keep track of things easier within tracing results.
+;; NOTE: 2025-10-08 This is explicitly duplicated for performance / code
+;; organization reasons. Since the generalization cases for `paragraph' are O(c)
+;; in number, we need not make it fully parameterized. This should also help me
+;; keep track of things easier within tracing results.
 ;;
 ;; Note also that blocks within drawers can't contain other drawers.
 (defun block-in-drawer (offset)
@@ -657,8 +668,17 @@ is encountered."
 (p:parse #'paragraph-in-center "Hello
 #+END_CENTER")
 
+(defun paragraph-in-comment (offset)
+  "A single body of text which runs until a double-newline, header, or END_COMMENT
+is encountered."
+  (paragraph-halted-by offset #'heading +comment-close+))
+
+#+nil
+(p:parse #'paragraph-in-comment "Hello
+#+END_COMMENT")
+
 (defun quote (offset)
-  "Parser: A Quote block."
+  "Parser: A QUOTE block."
   (funcall (p:ap (lambda (paragraphs) (make-quote :text (list->vector paragraphs)))
                  (p:between (*> +quote-open+ +consume-junk+)
                             (p:sep-end +consume-junk+ #'paragraph-in-quote)
@@ -677,8 +697,21 @@ is encountered."
 (p:parse #'quote "#+begin_quote
 #+end_quote")
 
+(defun complex-comment (offset)
+  "Parser: A COMMENT block."
+  (funcall (p:ap (lambda (paragraphs) (make-complex-comment :text (list->vector paragraphs)))
+                 (p:between (*> +comment-open+ +consume-junk+)
+                            (p:sep-end +consume-junk+ #'paragraph-in-comment)
+                            +comment-close+))
+           offset))
+
+#+nil
+(p:parse #'complex-comment "#+begin_comment
+Supports *markup*!
+#+end_comment")
+
 (defun center (offset)
-  "Parser: A Center block. When exported, the text therein should be centered."
+  "Parser: A CENTER block. When exported, the text therein should be centered."
   (funcall (p:ap (lambda (paragraphs) (make-center :text (list->vector paragraphs)))
                  (p:between (*> +center-open+ +consume-junk+)
                             (p:sep-end +consume-junk+ #'paragraph-in-center)

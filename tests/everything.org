@@ -23,7 +23,7 @@ So we'll make /a second one/. How about some code?
   main = putStrLn "org-mode tests"
 #+end_src
 
-** More :tag2:
+** More Interesting Blocks :tag2:
 
 And a quote.
 
@@ -38,10 +38,30 @@ Behold _centered_ text (when exported, anyway).
 #+end_center
 
 #+begin_example
-An fine example of _verbatim_ text.
+A fine example of _verbatim_ text.
 #+end_example
 
+#+BEGIN_VERSE
+Here we expect indentation and whatnot to be preserved,
+
+    while still accepting *markup*!
+
+That's silly.
+#+END_VERSE
+
+#+begin_comment
+This is totally ignored upon export.
+
+Ironically, it _still_ supports *markup*.
+#+end_comment
+
 ** Not a tag! :)
+
+** TODO COMMENT A commented-out subtree
+
+This whole subtree won't be exported.
+
+*** Nor this, obviously.
 
 ** DONE Gotta do it
    CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>

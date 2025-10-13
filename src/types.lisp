@@ -29,19 +29,23 @@ by zero or more subsections."
 
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
-  '(or comment quote example center code result listing table drawer footnote paragraph))
+  '(or comment quote example center complex-comment code result listing table drawer footnote paragraph))
 
 (defstruct quote
-  "A quote block."
+  "A QUOTE block."
   (text nil :type (vector paragraph)))
 
 (defstruct example
-  "An example block."
+  "An EXAMPLE block."
   (text nil :type (vector string)))
 
 (defstruct center
-  "A center block, which centers text when exported."
-  (text nil :type (vector string)))
+  "A CENTER block, which centers text when exported."
+  (text nil :type (vector paragraph)))
+
+(defstruct complex-comment
+  "A COMMENT block."
+  (text nil :type (vector paragraph)))
 
 (defstruct code
   "A src code block."
