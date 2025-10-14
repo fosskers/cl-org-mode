@@ -68,6 +68,7 @@
 (defparameter +logbook+ (p:string ":LOGBOOK:"))
 (defparameter +clock+ (p:string "CLOCK:"))
 (defparameter +end+        (p:string ":END:"))
+(defparameter +html+       (p:string "html"))
 (defparameter +inline-html-open+ (p:string "@@html:"))
 (defparameter +inline-html-close+ (p:string "@@"))
 (defparameter +footnote-start+ (p:string "[fn:"))
@@ -86,6 +87,8 @@
 (defparameter +clocktable-begin+ (p:string "#+BEGIN:"))
 (defparameter +clocktable-label+ (p:string "clocktable"))
 (defparameter +clocktable-end+ (p:string "#+END:"))
+(defparameter +export-open+ (p:alt (p:string "#+BEGIN_EXPORT") (p:string "#+begin_export")))
+(defparameter +export-close+ (p:alt (p:string "#+END_EXPORT") (p:string "#+end_export")))
 (defparameter +verse-open+ (p:alt (p:string "#+BEGIN_VERSE") (p:string "#+begin_verse")))
 (defparameter +verse-close+ (p:alt (p:string "#+END_VERSE") (p:string "#+end_verse")))
 (defparameter +comment-open+ (p:alt (p:string "#+BEGIN_COMMENT") (p:string "#+begin_comment")))
@@ -327,7 +330,7 @@ Yes."))
 (defun complex-object-not-drawer (offset)
   (funcall (p:alt
             ;; --- BEGIN/END Blocks --- ;;
-            #'comment #'quote #'example #'center #'complex-comment #'verse
+            #'comment #'quote #'example #'center #'complex-comment #'verse #'complex-html
             ;; --- Code --- ;;
             #'code #'result
             ;; --- Complex Objects --- ;;
@@ -1650,3 +1653,20 @@ HTML is correct - that's on the user to ensure."
 
 #+nil
 (p:parse #'html-line "#+HTML: <b>This entire line is bold!</b>")
+
+(defun complex-html (offset)
+  "Parser: A BEGIN_EXPORT html block."
+  (funcall (p:ap #'list->vector
+                 (p:between (*> +export-open+ +consume-space+ +html+ +consume-junk+)
+                            (p:many (*> (p:not +export-close+)
+                                        (<* (p:take-while (lambda (c) (not (char= c #\newline))))
+                                            +newline+)))
+                            +export-close+))
+           offset))
+
+#+nil
+(p:parse #'complex-html "#+BEGIN_EXPORT html
+Exported <b>literally</b> to HTML.
+
+Exported <b>literally</b> to HTML.
+#+END_EXPORT")
