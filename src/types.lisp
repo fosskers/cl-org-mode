@@ -242,7 +242,7 @@ of them?"
 
 (deftype words ()
   "The fundamental unit of Org text content. Plain units are split word-by-word."
-  '(or bold italic highlight underline verbatim strike link image punct plain))
+  '(or bold italic highlight underline verbatim strike link image footnote-ref inline-html punct plain))
 
 (defstruct link
   (attrs nil :type (or null attrs))
@@ -289,6 +289,12 @@ of them?"
 (deftype plain ()
   "A single word."
   'string)
+
+;; --- HTML --- ;;
+
+(defstruct inline-html
+  "A @@html:...@@ piece."
+  (text nil :type string))
 
 ;; --- Generics --- ;;
 

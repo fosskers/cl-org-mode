@@ -100,12 +100,28 @@ This [[https://www.fosskers.ca][Link has /markup/ in it]]
 
 Does*this*markup? No it doesn't.
 
+* HTML Literals
+
+Some @@html:<b>@@bold@@html:</b>@@ HTML.
+
+#+HTML: <b>This entire line is bold!</b> But will be excluded from non-HTML exports.
+
+#+BEGIN_EXPORT html
+Exported <b>literally</b> to HTML.
+#+END_EXPORT
+
 * Drawers
 
 This is some text.
 
 :CUSTOMDRAWER:
 Secret contents.
+
+[[https://www.fosskers.ca]]
+
+#+begin_example
+Complex object inside of a drawer.
+#+end_example
 :END:
 
 After.

@@ -68,6 +68,8 @@
 (defparameter +logbook+ (p:string ":LOGBOOK:"))
 (defparameter +clock+ (p:string "CLOCK:"))
 (defparameter +end+        (p:string ":END:"))
+(defparameter +inline-html-open+ (p:string "@@html:"))
+(defparameter +inline-html-close+ (p:string "@@"))
 (defparameter +footnote-start+ (p:string "[fn:"))
 (defparameter +label-start+ (p:string "#+"))
 (defparameter +results-start+ (p:string "#+RESULTS:"))
@@ -1265,7 +1267,13 @@ and not the second.")
 
 (defun markup (offset)
   "Parser: Some non-plain markup object."
-  (funcall (p:alt #'bold #'italic #'highlight #'verbatim #'underline #'strike #'image #'link #'footnote-ref #'punct)
+  (funcall (p:alt
+            ;; --- Ordinary Markup --- ;;
+            #'bold #'italic #'highlight #'verbatim #'underline #'strike
+            ;; --- Inline Objects --- ;;
+            #'image #'link #'footnote-ref #'inline-html
+            ;; --- Miscellaneous --- ;;
+            #'punct)
            offset))
 
 (defun words (offset)
@@ -1523,6 +1531,9 @@ Great content.
 
 [[https://www.fosskers.ca]]
 
+#+begin_example
+Complex object inside of a drawer.
+#+end_example
 More!
 :END:")
 
@@ -1616,3 +1627,16 @@ This last line should not be part of the footnote.")
 
 #+nil
 (p:parse #'horizontal-line "----------")
+
+(defun inline-html (offset)
+  "Parser: A @@html:...@@ piece of literal HTML. Does not guarantee that the inner
+HTML is correct - that's on the user to ensure."
+  (funcall (p:ap (lambda (html) (make-inline-html :text html))
+                 (p:between +inline-html-open+
+                            (p:take-while (lambda (c) (and (not (char= c #\@))
+                                                           (not (char= c #\newline)))))
+                            +inline-html-close+))
+           offset))
+
+#+nil
+(p:parse #'inline-html "@@html:<b>@@")
