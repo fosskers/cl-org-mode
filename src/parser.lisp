@@ -83,6 +83,8 @@
 (defparameter +clocktable-begin+ (p:string "#+BEGIN:"))
 (defparameter +clocktable-label+ (p:string "clocktable"))
 (defparameter +clocktable-end+ (p:string "#+END:"))
+(defparameter +verse-open+ (p:alt (p:string "#+BEGIN_VERSE") (p:string "#+begin_verse")))
+(defparameter +verse-close+ (p:alt (p:string "#+END_VERSE") (p:string "#+end_verse")))
 (defparameter +comment-open+ (p:alt (p:string "#+BEGIN_COMMENT") (p:string "#+begin_comment")))
 (defparameter +comment-close+ (p:alt (p:string "#+END_COMMENT") (p:string "#+end_comment")))
 (defparameter +center-open+ (p:alt (p:string "#+BEGIN_CENTER") (p:string "#+begin_center")))
@@ -322,7 +324,7 @@ Yes."))
 (defun complex-object-not-drawer (offset)
   (funcall (p:alt
             ;; --- BEGIN/END Blocks --- ;;
-            #'comment #'quote #'example #'center #'complex-comment
+            #'comment #'quote #'example #'center #'complex-comment #'verse
             ;; --- Code --- ;;
             #'code #'result
             ;; --- Complex Objects --- ;;
@@ -747,6 +749,42 @@ Now the second thing.
 #+nil
 (p:parse #'example "#+begin_example
 #+end_example")
+
+(defun verse (offset)
+  "Parser: A VERSE block, in which indentation and blank lines are preserved."
+  (funcall (p:ap (lambda (lines) (make-verse :text (list->vector lines)))
+                 (p:between (*> +verse-open+ +consume-junk+)
+                            (p:many (*> (p:not +verse-close+)
+                                        (<* #'verse-line +newline+)))
+                            +verse-close+))
+           offset))
+
+#+nil
+(p:parse #'verse "#+BEGIN_VERSE
+#+END_VERSE")
+
+#+nil
+(p:parse #'verse "#+BEGIN_VERSE
+Hello!
+
+    Farewell *my* sweet!
+
+This is goodbye.
+#+END_VERSE")
+
+;; NOTE: 2025-10-15 Results in TABs being replaced by SPACE.
+(defun verse-line (offset)
+  (funcall (p:ap (lambda (indent words) (make-verse-line :indent (length indent)
+                                                         :text (list->vector words)))
+                 (p:take-while (lambda (c) (or (char= c #\space)
+                                               (char= c #\tab))))
+                 (p:alt #'line (p:pure (vector))))
+           offset))
+
+#+nil
+(p:parse #'verse-line "    Profound /elucidation/!")
+#+nil
+(p:parse #'verse-line "")
 
 (defun code (offset)
   "Parser: A src code block."
@@ -1534,11 +1572,6 @@ Content
 a book I am referencing but have not read myself.
 
 This last line should not be part of the footnote.")
-
-;; TODO: 2025-10-10 Start here. Figure out the proper place to actually parse
-;; these references in relation to how/where a `plain' is parsed. Through
-;; experimentation it seems like the reference can appear both immediately
-;; attached to a word, but also be free-floating.
 
 (defun footnote-ref (offset)
   (funcall (p:alt #'footnote-simple-ref #'footnote-inline-ref) offset))

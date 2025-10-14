@@ -47,6 +47,14 @@ by zero or more subsections."
   "A COMMENT block."
   (text nil :type (vector paragraph)))
 
+(defstruct verse
+  "A VERSE block, in which indentation and blank lines are preserved."
+  (text nil :type (vector verse-line)))
+
+(defstruct verse-line
+  (indent 0   :type fixnum)
+  (text   nil :type (vector words)))
+
 (defstruct code
   "A src code block."
   (name nil :type (or null string))
