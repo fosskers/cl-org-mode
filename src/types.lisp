@@ -29,7 +29,17 @@ by zero or more subsections."
 
 (deftype block ()
   "Look Haskell, Lisp can do ADTs too!"
-  '(or comment quote example center complex-comment code result listing table drawer footnote paragraph))
+  '(or
+    ;; --- BEGIN/END Blocks --- ;;
+    comment quote example center complex-comment complex-html
+    ;; --- Code --- ;;
+    code result
+    ;; --- Complex Objects --- ;;
+    listing table
+    ;; --- Single-line --- ;;
+    html-line footnote horizontal-line
+    ;; --- Miscellaneous --- ;;
+    drawer paragraph))
 
 (defstruct quote
   "A QUOTE block."
@@ -295,6 +305,14 @@ of them?"
 (defstruct inline-html
   "A @@html:...@@ piece."
   (text nil :type string))
+
+(defstruct html-line
+  "A single #+HTML line. Cannot line wrap."
+  (text nil :type string))
+
+(defstruct complex-html
+  "An EXPORT html block whose contents are exported entirely literally."
+  (text nil :type (vector string)))
 
 ;; --- Generics --- ;;
 

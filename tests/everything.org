@@ -108,6 +108,8 @@ Some @@html:<b>@@bold@@html:</b>@@ HTML.
 
 #+BEGIN_EXPORT html
 Exported <b>literally</b> to HTML.
+
+ A second line.
 #+END_EXPORT
 
 * Drawers

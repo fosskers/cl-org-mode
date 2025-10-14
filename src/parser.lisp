@@ -82,6 +82,7 @@
 (defparameter +octothorp+ (p:char #\#))
 (defparameter +bracket-open+  (p:char #\[))
 (defparameter +bracket-close+ (p:char #\]))
+(defparameter +html-line-open+ (p:string "#+HTML:"))
 (defparameter +clocktable-begin+ (p:string "#+BEGIN:"))
 (defparameter +clocktable-label+ (p:string "clocktable"))
 (defparameter +clocktable-end+ (p:string "#+END:"))
@@ -331,8 +332,8 @@ Yes."))
             #'code #'result
             ;; --- Complex Objects --- ;;
             #'table #'listing
-            ;; --- Miscellaneous --- ;;
-            #'footnote #'horizontal-line)
+            ;; --- Single-line --- ;;
+            #'footnote #'horizontal-line #'html-line)
            offset))
 
 (defun block (offset)
@@ -1640,3 +1641,12 @@ HTML is correct - that's on the user to ensure."
 
 #+nil
 (p:parse #'inline-html "@@html:<b>@@")
+
+(defun html-line (offset)
+  "Parser: A single-line #+HTML: literal."
+  (funcall (p:ap (lambda (html) (make-html-line :text html))
+                 (*> +html-line-open+ +consume-space+ +take1-til-end+))
+           offset))
+
+#+nil
+(p:parse #'html-line "#+HTML: <b>This entire line is bold!</b>")
