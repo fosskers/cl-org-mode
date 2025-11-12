@@ -8,7 +8,7 @@
 (defpackage org-mode
   (:use :cl)
   (:shadow #:quote #:block #:time #:ratio)
-  (:import-from :parcom #:<* #:*> #:<$)
+  (:import-from :parcom #:<* #:*> #:<$ #:fn #:-> #:maybe #:always)
   (:local-nicknames (#:p #:parcom)
                     (#:d #:parcom/datetime))
   ;; --- Entry --- ;;
@@ -37,13 +37,18 @@
 
 ;; --- Entry --- ;;
 
+(fn from-string (-> (simple-array character (*)) file))
 (defun from-string (str)
   "Parse an entire org file from a string."
   (p:parse (<* #'file #'p:eof) str))
 
+(fn from-file (-> (or string pathname) file))
 (defun from-file (path)
   "Parse an entire org file given a path to it."
   (from-string (string-from-file path)))
+
+#+nil
+(from-file "tests/everything.org")
 
 ;; --- Utilities --- ;;
 
@@ -54,13 +59,14 @@
 #+nil
 (string-starts-with? "hello" "he")
 
+(fn string-ends-with? (-> string string boolean))
 (defun string-ends-with? (s postfix)
   (string= postfix s :start2 (max 0 (- (length s) (length postfix)))))
 
 #+nil
 (string-ends-with? "hello" "lo")
 
-(declaim (ftype (function ((or string pathname)) (simple-array character (*))) string-from-file))
+(fn string-from-file (-> (or string pathname) (simple-array character (*))))
 (defun string-from-file (path)
   "Read the contents of a file into a string."
   (with-open-file (stream path :direction :input :element-type 'character)
@@ -69,5 +75,6 @@
             :until (eq c :eof)
             :do (write-char c out)))))
 
+(fn list->vector (-> list vector))
 (defun list->vector (list)
   (coerce list 'vector))

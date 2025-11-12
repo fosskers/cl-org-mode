@@ -31,7 +31,7 @@ by zero or more subsections."
   "Look Haskell, Lisp can do ADTs too!"
   '(or
     ;; --- BEGIN/END Blocks --- ;;
-    comment quote example center complex-comment complex-html
+    comment quote example center verse complex-comment complex-html
     ;; --- Code --- ;;
     code result
     ;; --- Complex Objects --- ;;

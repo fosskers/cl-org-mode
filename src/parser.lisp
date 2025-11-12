@@ -150,6 +150,7 @@ or the parse will fail."
 
 ;; --- Whole Files --- ;;
 
+(fn file (maybe file))
 (defun file (offset)
   "Parser: An entire .org file."
   (funcall (p:ap (lambda (meta doc) (make-file :metadata meta :document doc))
@@ -160,6 +161,7 @@ or the parse will fail."
 #+nil
 (from-file "tests/lists.org")
 
+(fn metadata (maybe metadata))
 (defun metadata (offset)
   "Parser: All extra information at the top of the file."
   (funcall (p:ap (lambda (comments props pairs)
@@ -187,6 +189,7 @@ or the parse will fail."
 #+filetags: writeup
 ")
 
+(fn metadata-kv-pairs (maybe hash-table))
 (defun metadata-kv-pairs (offset)
   "Parser: All the key-value pairs at the top of the file."
   (p:fmap (lambda (list)
@@ -203,6 +206,7 @@ or the parse will fail."
 
 Content")
 
+(fn comment (maybe comment))
 (defun comment (offset)
   ;; FIXME: 2025-09-19 Should this proactively trim whitespace off the end?
   ;;
@@ -226,6 +230,7 @@ Content")
 
 # this shouldn't be parsed as the same comment")
 
+(fn label (maybe string))
 (defun label (offset)
   "Parser: The key of some key-value pair. Used at the top level, but also on
 tables and source blocks."
@@ -237,6 +242,7 @@ tables and source blocks."
 #+nil
 (p:parse #'label "#+name: the100")
 
+(fn kv-pair (maybe cons))
 (defun kv-pair (offset)
   (funcall (p:ap #'cons
                  #'label
@@ -249,6 +255,7 @@ tables and source blocks."
 
 ;; --- Documents and Sections --- ;;
 
+(fn document (-> fixnum (maybe document)))
 (defun document (stars)
   "Parser: Many blocks and any subsections of deeper depth."
   (lambda (offset)
@@ -276,6 +283,7 @@ tables and source blocks."
 
 Stuff")
 
+(fn section (-> fixnum (maybe section)))
 (defun section (stars)
   "Parser: A heading and any subsequent content."
   (lambda (offset)
@@ -339,6 +347,7 @@ Yes."))
             #'footnote #'horizontal-line #'html-line)
            offset))
 
+(fn block (maybe block))
 (defun block (offset)
   "Parser: A complex object or a plain paragraph."
   (funcall (p:alt #'complex-object #'paragraph) offset))
@@ -364,6 +373,7 @@ Yes."))
   - [x] B
   - [ ] C")
 
+(fn depth-sensitive-listing (-> fixnum (maybe listing)))
 (defun depth-sensitive-listing (depth)
   (lambda (offset)
     (multiple-value-bind (res next)
@@ -431,6 +441,7 @@ B*")
 #+nil
 (p:parse #'list-bullet "1.")
 
+(fn list-item (-> fixnum (maybe list-item)))
 (defun list-item (depth)
   (lambda (offset)
     (funcall
@@ -686,6 +697,7 @@ is encountered."
 (p:parse #'paragraph-in-comment "Hello
 #+END_COMMENT")
 
+(fn quote (maybe quote))
 (defun quote (offset)
   "Parser: A QUOTE block."
   (funcall (p:ap (lambda (paragraphs) (make-quote :text (list->vector paragraphs)))
@@ -706,6 +718,7 @@ is encountered."
 (p:parse #'quote "#+begin_quote
 #+end_quote")
 
+(fn complex-comment (maybe complex-comment))
 (defun complex-comment (offset)
   "Parser: A COMMENT block."
   (funcall (p:ap (lambda (paragraphs) (make-complex-comment :text (list->vector paragraphs)))
@@ -719,6 +732,7 @@ is encountered."
 Supports *markup*!
 #+end_comment")
 
+(fn center (maybe center))
 (defun center (offset)
   "Parser: A CENTER block. When exported, the text therein should be centered."
   (funcall (p:ap (lambda (paragraphs) (make-center :text (list->vector paragraphs)))
@@ -734,6 +748,7 @@ Supports *markup*!
 同行二人
 #+end_center")
 
+(fn example (maybe example))
 (defun example (offset)
   "Parser: An Example block. Always contains verbatim text, so internal markup is
 interpreted as normal text."
@@ -756,6 +771,7 @@ Now the second thing.
 (p:parse #'example "#+begin_example
 #+end_example")
 
+(fn verse (maybe verse))
 (defun verse (offset)
   "Parser: A VERSE block, in which indentation and blank lines are preserved."
   (funcall (p:ap (lambda (lines) (make-verse :text (list->vector lines)))
@@ -779,12 +795,13 @@ This is goodbye.
 #+END_VERSE")
 
 ;; NOTE: 2025-10-15 Results in TABs being replaced by SPACE.
+(fn verse-line (maybe verse-line))
 (defun verse-line (offset)
   (funcall (p:ap (lambda (indent words) (make-verse-line :indent (length indent)
                                                          :text (list->vector words)))
                  (p:take-while (lambda (c) (or (char= c #\space)
                                                (char= c #\tab))))
-                 (p:alt #'line (p:pure (vector))))
+                 (p:alt #'line (p:pure '())))
            offset))
 
 #+nil
@@ -792,6 +809,7 @@ This is goodbye.
 #+nil
 (p:parse #'verse-line "")
 
+(fn code (maybe code))
 (defun code (offset)
   "Parser: A src code block."
   (funcall (p:ap (lambda (name lang vars code)
@@ -830,6 +848,7 @@ This is goodbye.
 (+ 1 1)
 #+end_src")
 
+(fn result (maybe result))
 (defun result (offset)
   "Parser: The RESULTS block that can follow a src block."
   (funcall (p:ap (lambda (name text) (make-result :name name :text text))
@@ -879,6 +898,7 @@ This is goodbye.
 
 ;; --- Timestamps --- ;;
 
+(fn timestamps (maybe list))
 (defun timestamps (offset)
   "Parser: All things time-related that can appear one the same line."
   (p:fmap (lambda (list) (apply #'append list))
@@ -891,6 +911,7 @@ This is goodbye.
 #+nil
 (p:parse #'timestamps "CLOSED: [2021-04-28 Wed 15:10] DEADLINE: <2021-04-29 Thu> SCHEDULED: <2021-04-28 Wed>")
 
+(fn scheduled (maybe timestamp))
 (defun scheduled (offset)
   (funcall (*> +scheduled+
                +consume-space+
@@ -904,6 +925,7 @@ This is goodbye.
 #+nil
 (p:parse #'scheduled "SCHEDULED: <2021-04-30 Fri 13:00 .+1w -1d>")
 
+(fn deadline (maybe timestamp))
 (defun deadline (offset)
   (funcall (*> +deadline+
                +consume-space+
@@ -915,6 +937,7 @@ This is goodbye.
 #+nil
 (p:parse #'deadline "DEADLINE: <2021-04-30 Fri>")
 
+(fn closed (maybe timestamp))
 (defun closed (offset)
   (funcall (*> +closed+
                +consume-space+
@@ -924,6 +947,7 @@ This is goodbye.
 #+nil
 (p:parse #'closed "CLOSED: [2021-04-30 Fri 12:34]")
 
+(fn bracketed-timestamp (maybe timestamp))
 (defun bracketed-timestamp (offset)
   (funcall (p:between +bracket-open+
                       #'timestamp
@@ -933,6 +957,7 @@ This is goodbye.
 #+nil
 (p:parse #'bracketed-timestamp "[2021-04-30 Fri 12:34]")
 
+(fn timestamp (maybe timestamp))
 (defun timestamp (offset)
   (funcall (p:ap (lambda (day dow time repeat delay)
                    (make-timestamp :day day :day-of-week dow :time time :repeat repeat :delay delay))
@@ -949,6 +974,7 @@ This is goodbye.
 #+nil
 (p:parse #'timestamp "2025-08-31 So")
 
+(fn repeat (maybe repeat))
 (defun repeat (offset)
   (funcall (p:ap (lambda (mode value interval)
                    (make-repeat :mode mode :value value :interval interval))
@@ -962,6 +988,7 @@ This is goodbye.
 #+nil
 (p:parse #'repeat ".+1w")
 
+(fn delay (maybe delay))
 (defun delay (offset)
   (funcall (p:ap (lambda (mode value interval)
                    (make-delay :mode mode :value value :interval interval))
@@ -996,6 +1023,7 @@ This is goodbye.
 #+nil
 (p:parse (depth-sensitive-heading 2) "* Simplest")
 
+(fn heading (maybe heading))
 (defun heading (offset)
   "Perhaps the busiest object in the whole library!"
   (funcall (p:ap (lambda (depth todo commented priority text progress tags tss ts ps log)
@@ -1096,6 +1124,7 @@ Content")
 #+nil
 (p:parse #'bullets-of-heading "*** Hello")
 
+(fn todo (maybe todo))
 (defun todo (offset)
   "Parser: A single capital word. The word must be at least two letters long
 in order to avoid parsing the normal word A as a TODO-like token.
@@ -1114,6 +1143,7 @@ within heading lines to prevent entire subtrees from being exported."
 #+nil
 (p:parse #'todo "TODO")
 
+(fn priority (maybe priority))
 (defun priority (offset)
   (p:fmap (lambda (s) (make-priority :text s))
           (funcall (p:between +bracket-open+
@@ -1139,9 +1169,11 @@ within heading lines to prevent entire subtrees from being exported."
 #+nil
 (p:parse #'text-of-heading "")
 
+(fn progress (maybe progress))
 (defun progress (offset)
   (funcall (p:alt #'percentage #'ratio) offset))
 
+(fn percentage (maybe percentage))
 (defun percentage (offset)
   "Parser: A box like [37%]."
   (p:fmap (lambda (n) (make-percentage :number n))
@@ -1153,6 +1185,7 @@ within heading lines to prevent entire subtrees from being exported."
 #+nil
 (p:parse #'percentage "[37%]")
 
+(fn ratio (maybe ratio))
 (defun ratio (offset)
   "Parser: A box like [1/2]."
   (funcall (p:between +bracket-open+
@@ -1165,6 +1198,7 @@ within heading lines to prevent entire subtrees from being exported."
 #+nil
 (p:parse #'ratio "[1/2]")
 
+(fn tags (maybe (vector string)))
 (defun tags (offset)
   "Parser: Tags like :foo:bar:baz:"
   (funcall (p:ap #'list->vector
@@ -1185,6 +1219,7 @@ within heading lines to prevent entire subtrees from being exported."
 #+nil
 (p:parse #'tags ":)")
 
+(fn properties (maybe list))
 (defun properties (offset)
   "Parser: A PROPERTIES drawer."
   (funcall (*> +properties+
@@ -1205,6 +1240,7 @@ within heading lines to prevent entire subtrees from being exported."
 :END:
 ")
 
+(fn logbook (maybe (vector logbook-item)))
 (defun logbook (offset)
   "Parser: A LOGBOOK drawer."
   (funcall (p:ap #'list->vector
@@ -1222,6 +1258,7 @@ CLOCK: [2025-10-08 Mi 04:50]--[2025-10-08 Mi 06:20] =>  1:30
 CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
 :END:")
 
+(fn logbook-item (maybe logbook-item))
 (defun logbook-item (offset)
   "Parser: A single item of a LOGBOOK drawer."
   (funcall (p:ap (lambda (start end total) (make-logbook-item :start start :end end :total total))
@@ -1238,6 +1275,7 @@ CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
 #+nil
 (p:parse #'logbook-item "CLOCK: [2025-10-08 Mi 04:50]--[2025-10-08 Mi 06:20] =>  1:30")
 
+(fn total-time (maybe total))
 (defun total-time (offset)
   "Parser: The total time of a logbook item."
   (funcall (p:ap (lambda (hours mins) (make-total :hours hours :minutes mins))
@@ -1254,6 +1292,7 @@ CLOCK: [2025-10-07 Di 07:08]--[2025-10-07 Di 07:57] =>  0:49
 
 ;; --- Text Markup --- ;;
 
+(fn line (maybe list))
 (defun line (offset)
   "Parser: As many `words' as possible without going over a line break. Does not
 consume any newline characters."
@@ -1269,6 +1308,7 @@ consume any newline characters."
 (p:parse #'line "This should only parse the first line
 and not the second.")
 
+(fn markup (maybe words))
 (defun markup (offset)
   "Parser: Some non-plain markup object."
   (funcall (p:alt
@@ -1280,13 +1320,16 @@ and not the second.")
             #'punct)
            offset))
 
+(fn words (maybe words))
 (defun words (offset)
   (funcall (p:alt #'markup #'plain) offset))
 
+(fn words-in-cell (maybe words))
 (defun words-in-cell (offset)
   "Parser: Like `words' but certain markup is banned or altered."
   (funcall (p:alt #'markup #'plain-in-cell) offset))
 
+(fn words-in-link (maybe words))
 (defun words-in-link (offset)
   "Parser: Like `words' but certain markup is banned or altered."
   (funcall (p:alt #'markup #'plain-in-link) offset))
@@ -1295,6 +1338,7 @@ and not the second.")
 ;; can stretch over line breaks, but only one at a time. A paragraph break (two
 ;; newlines) stops the markup. Will definitely need unit tests for that.
 
+(fn bold (maybe bold))
 (defun bold (offset)
   (p:fmap (lambda (s) (make-bold :text s))
           (funcall (p:between +star+
@@ -1305,6 +1349,7 @@ and not the second.")
 #+nil
 (p:parse #'bold "*hello*")
 
+(fn italic (maybe italic))
 (defun italic (offset)
   (p:fmap (lambda (s) (make-italic :text s))
           (funcall (p:between +slash+
@@ -1315,6 +1360,7 @@ and not the second.")
 #+nil
 (p:parse #'italic "/hello/")
 
+(fn highlight (maybe highlight))
 (defun highlight (offset)
   (p:fmap (lambda (s) (make-highlight :text s))
           (funcall (p:between +tilde+
@@ -1325,6 +1371,7 @@ and not the second.")
 #+nil
 (p:parse #'highlight "~hello~")
 
+(fn verbatim (maybe verbatim))
 (defun verbatim (offset)
   (p:fmap (lambda (s) (make-verbatim :text s))
           (funcall (p:between +equal+
@@ -1335,6 +1382,7 @@ and not the second.")
 #+nil
 (p:parse #'verbatim "=hello=")
 
+(fn underline (maybe underline))
 (defun underline (offset)
   (p:fmap (lambda (s) (make-underline :text s))
           (funcall (p:between +under+
@@ -1345,6 +1393,7 @@ and not the second.")
 #+nil
 (p:parse #'underline "_hello_")
 
+(fn strike (maybe strike))
 (defun strike (offset)
   (p:fmap (lambda (s) (make-strike :text s))
           (funcall (p:between +plus+
@@ -1358,6 +1407,7 @@ and not the second.")
 ;; NOTE: 2025-10-12 Previously this was a simple `take-while1', but the
 ;; discovery of Footnotes necessitated that `plain' here must account for the
 ;; potential presence of a Footnote Reference directly attached to it.
+(fn plain (maybe string))
 (defun plain (offset)
   "Parser: A single, unadorned word."
   (funcall (p:recognize (*> (p:take-while1 (lambda (c) (and (not (char= c #\space))
@@ -1378,6 +1428,7 @@ and not the second.")
 
 ;; NOTE: 2025-10-12 Related to the above, table cells can also contain footnote
 ;; references.
+(fn plain-in-cell (maybe string))
 (defun plain-in-cell (offset)
   "Parser: Like `plain', but constrained to the conditions of a table cell."
   (funcall (p:recognize (*> (p:take-while1 (lambda (c) (and (not (char= c #\space))
@@ -1389,6 +1440,7 @@ and not the second.")
                                                                        (not (char= c #\|)))))))))
            offset))
 
+(fn plain-in-link (maybe string))
 (defun plain-in-link (offset)
   "Parser: Like `plain', but constrained to the conditions of a link description
 or footnote reference."
@@ -1396,6 +1448,7 @@ or footnote reference."
                                                (char= c #\])))))
            offset))
 
+(fn punct (maybe punct))
 (defun punct (offset)
   "Parser: A single character of punctuation."
   (p:fmap (lambda (c) (make-punct :char c))
@@ -1414,6 +1467,7 @@ or footnote reference."
 #+nil
 (p:parse #'punct ",hello")
 
+(fn link (maybe link))
 (defun link (offset)
   (funcall (p:ap (lambda (attrs url text)
                    (make-link :attrs attrs
@@ -1434,6 +1488,7 @@ or footnote reference."
 (p:parse #'link "#+ATTR_HTML: :title foo
 [[https://www.fosskers.ca]]")
 
+(fn link-description (maybe (vector words)))
 (defun link-description (offset)
   "Like `line', but limited to a link description."
   (funcall (p:ap #'list->vector
@@ -1441,6 +1496,7 @@ or footnote reference."
                                                 #'words-in-link)))
            offset))
 
+(fn image (maybe image))
 (defun image (offset)
   (funcall (p:ap (lambda (caption attrs name url)
                    (make-image :caption caption
@@ -1466,6 +1522,7 @@ or footnote reference."
 [[/path/to/img.jpeg]]")
 
 ;; https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/Image_types
+(fn url-of-image (maybe url))
 (defun url-of-image (offset)
   (multiple-value-bind (res next)
       (funcall (p:take-while1 (lambda (c) (not (char= c #\])))) offset)
@@ -1479,10 +1536,12 @@ or footnote reference."
         (values (make-url :text res) next)
         (p:fail offset))))
 
+(fn name (maybe string))
 (defun name (offset)
   "Parser: A #+NAME line."
   (funcall (*> +name+ +take1-til-end+) offset))
 
+(fn attrs (maybe attrs))
 (defun attrs (offset)
   (funcall (p:ap (lambda (alist)
                    (make-attrs :html  (cdr (assoc :html  alist))
@@ -1495,6 +1554,7 @@ or footnote reference."
 (p:parse #'attrs "#+ATTR_HTML: :title foo
 #+ATTR_ORG: :center true")
 
+(fn attr-pair (maybe cons))
 (defun attr-pair (offset)
   (funcall (p:ap #'cons
                  (*> (p:alt (p:string "#+ATTR_")
@@ -1508,6 +1568,7 @@ or footnote reference."
 #+nil
 (p:parse #'attr-pair "#+ATTR_HTML: :title foo")
 
+(fn drawer (maybe drawer))
 (defun drawer (offset)
   "Parser: Any kind of drawer."
   (funcall (p:ap (lambda (label content)
@@ -1550,6 +1611,7 @@ After the drawer.")
 
 ;; NOTE: 2025-10-08 Given a stunted name in order to avoid clashing with the
 ;; `drawer' struct accessor of the true name.
+(fn drawer-labl (maybe string))
 (defun drawer-labl (offset)
   (funcall (p:between +colon+
                       (p:take-while1 (lambda (c) (not (char= c #\colon))))
@@ -1561,6 +1623,7 @@ After the drawer.")
 Content
 :END:")
 
+(fn footnote (maybe footnote))
 (defun footnote (offset)
   "Parser: A full, standalone fullnote."
   (funcall (p:ap (lambda (label content)
@@ -1588,9 +1651,11 @@ a book I am referencing but have not read myself.
 
 This last line should not be part of the footnote.")
 
+(fn footnote-ref (maybe footnote-ref))
 (defun footnote-ref (offset)
   (funcall (p:alt #'footnote-simple-ref #'footnote-inline-ref) offset))
 
+(fn footnote-simple-ref (maybe footnote-simple-ref))
 (defun footnote-simple-ref (offset)
   "Parser: A reference to a footnote that is defined somewhere else."
   (funcall (p:ap (lambda (label) (make-footnote-simple-ref :label label))
@@ -1604,6 +1669,7 @@ This last line should not be part of the footnote.")
 #+nil
 (p:parse #'footnote-simple-ref "[fn:50]")
 
+(fn footnote-inline-ref (maybe footnote-inline-ref))
 (defun footnote-inline-ref (offset)
   "Parser: An inline reference with no corresponding external footnote."
   (funcall (p:ap (lambda (label content)
@@ -1622,6 +1688,7 @@ This last line should not be part of the footnote.")
 #+nil
 (p:parse #'footnote-inline-ref "[fn:1: This is the *inline* reference]")
 
+(fn horizontal-line (maybe horizontal-line))
 (defun horizontal-line (offset)
   "Parser: A horizontal line of at least 5 dashes."
   (multiple-value-bind (res next)
@@ -1632,6 +1699,7 @@ This last line should not be part of the footnote.")
 #+nil
 (p:parse #'horizontal-line "----------")
 
+(fn inline-html (maybe inline-html))
 (defun inline-html (offset)
   "Parser: A @@html:...@@ piece of literal HTML. Does not guarantee that the inner
 HTML is correct - that's on the user to ensure."
@@ -1645,6 +1713,7 @@ HTML is correct - that's on the user to ensure."
 #+nil
 (p:parse #'inline-html "@@html:<b>@@")
 
+(fn html-line (maybe html-line))
 (defun html-line (offset)
   "Parser: A single-line #+HTML: literal."
   (funcall (p:ap (lambda (html) (make-html-line :text html))
@@ -1654,9 +1723,10 @@ HTML is correct - that's on the user to ensure."
 #+nil
 (p:parse #'html-line "#+HTML: <b>This entire line is bold!</b>")
 
+(fn complex-html (maybe complex-html))
 (defun complex-html (offset)
   "Parser: A BEGIN_EXPORT html block."
-  (funcall (p:ap #'list->vector
+  (funcall (p:ap (lambda (list) (make-complex-html :text (list->vector list)))
                  (p:between (*> +export-open+ +consume-space+ +html+ +consume-junk+)
                             (p:many (*> (p:not +export-close+)
                                         (<* (p:take-while (lambda (c) (not (char= c #\newline))))
@@ -1670,3 +1740,11 @@ Exported <b>literally</b> to HTML.
 
 Exported <b>literally</b> to HTML.
 #+END_EXPORT")
+
+;; TODO: 2025-11-13 Start here. All of Latex needs to be done, but that's almost
+;; everything for this first pass.
+
+#+nil
+(defun latex-block (offset)
+  "Parser: A Latex 'environment'."
+  (funcall))
