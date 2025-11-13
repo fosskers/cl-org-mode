@@ -120,6 +120,7 @@
 
 ;; --- Utilities --- ;;
 
+(fn consume-n (-> fixnum (-> character boolean) (maybe fixnum)))
 (defun consume-n (n p)
   "Combinator: A logical combination of `consume' and `take', such that only N-many
 of the to-be-consumed characters are consumed."
@@ -136,6 +137,7 @@ of the to-be-consumed characters are consumed."
 #+nil
 (p:parse (consume-n 3 (lambda (c) (char= c #\a))) "aabbb")
 
+(fn valid (-> (-> t boolean) (maybe t) (maybe t)))
 (defun valid (pred par)
   "Combinator: The result of a given parser must pass a certain predicate,
 or the parse will fail."
@@ -365,6 +367,7 @@ Yes."))
   "Parser: Like `block', but can't contain other drawers."
   (funcall (p:alt #'complex-object-not-drawer #'paragraph-in-drawer) offset))
 
+(fn listing (maybe listing))
 (defun listing (offset)
   (funcall (depth-sensitive-listing -1) offset))
 
@@ -509,6 +512,7 @@ B*")
 #+nil
 (p:parse #'list-item-status "[x]")
 
+(fn list-item-line (maybe (vector words)))
 (defun list-item-line (offset)
   (funcall (p:ap (lambda (list) (coerce list 'vector))
                  (p:sep-end1 (*> +consume-space+
@@ -519,6 +523,7 @@ B*")
 #+nil
 (p:parse #'list-item-line "Hello *there* [1/2]")
 
+(fn table (maybe table))
 (defun table (offset)
   (funcall (p:ap (lambda (caption attrs plot name rows form)
                    (make-table :caption caption
@@ -549,6 +554,7 @@ B*")
 | Morelia   |    257.56 |   17.67 |
 #+TBLFM: $total=vsum(@I..@II)")
 
+(fn caption (maybe caption))
 (defun caption (offset)
   (funcall (p:ap (lambda (short long) (make-caption :short short :long long))
                  (*> +caption-start+
@@ -562,6 +568,7 @@ B*")
 #+nil
 (p:parse #'caption "#+CAPTION[short]: long")
 
+(fn plot (maybe string))
 (defun plot (offset)
   "Parser: A GnuPlot line above a table."
   (funcall (*> +plot-start+ +consume-space+ +take1-til-end+) offset))
@@ -569,6 +576,7 @@ B*")
 #+nil
 (p:parse #'plot "#+PLOT: title:\"Citas\" ind:1 deps:(3) type:2d with:histograms set:\"yrange [0:]\"")
 
+(fn formula (maybe string))
 (defun formula (offset)
   "Parser: A table formula."
   (funcall (*> +tblfm+ +take1-til-end+) offset))
@@ -593,6 +601,7 @@ B*")
 #+nil
 (p:parse #'row "| A | B *B* B | C |")
 
+(fn cell (maybe (vector words)))
 (defun cell (offset)
   "Like `line', but limited to a single table cell."
   (funcall (p:ap #'list->vector
@@ -602,6 +611,7 @@ B*")
 #+nil
 (p:parse #'cell "hello *there* sir |")
 
+(fn clock-table (maybe clock-table))
 (defun clock-table (offset)
   "Parser: An auto-generated `clocktable' object."
   (funcall (p:ap (lambda (settings table) (make-clock-table :settings settings :table table))
@@ -641,6 +651,7 @@ Drawer or a Quote block, etc."
                           #'line)))
     ,offset))
 
+(fn paragraph (maybe paragraph))
 (defun paragraph (offset)
   "A single body of text which runs until a double-newline or a header is
 encountered."
@@ -661,6 +672,7 @@ Fourth line - shouldn't parse!")
 *** A header!
 Paragraph of next section.")
 
+(fn paragraph-in-drawer (maybe paragraph))
 (defun paragraph-in-drawer (offset)
   "A single body of text which runs until a double-newline, header, or drawer :END:
 is encountered."
@@ -670,6 +682,7 @@ is encountered."
 (p:parse #'paragraph-in-drawer "Hello
 :END:")
 
+(fn paragraph-in-quote (maybe paragraph))
 (defun paragraph-in-quote (offset)
   "A single body of text which runs until a double-newline, header, or END_QUOTE
 is encountered."
@@ -679,6 +692,7 @@ is encountered."
 (p:parse #'paragraph-in-quote "Hello
 #+END_QUOTE")
 
+(fn paragraph-in-center (maybe paragraph))
 (defun paragraph-in-center (offset)
   "A single body of text which runs until a double-newline, header, or END_CENTER
 is encountered."
@@ -688,6 +702,7 @@ is encountered."
 (p:parse #'paragraph-in-center "Hello
 #+END_CENTER")
 
+(fn paragraph-in-comment (maybe paragraph))
 (defun paragraph-in-comment (offset)
   "A single body of text which runs until a double-newline, header, or END_COMMENT
 is encountered."
@@ -1012,6 +1027,7 @@ This is goodbye.
 ;; --- Headings --- ;;
 
 ;; TODO: 2025-09-16 Create a vector-based cache for the inner lambdas here.
+(fn depth-sensitive-heading (-> fixnum (maybe heading)))
 (defun depth-sensitive-heading (stars)
   "A variant of `heading' which knows how deep it should be parsing."
   (lambda (offset)
@@ -1115,6 +1131,7 @@ CLOCK: [2025-10-06 Mo 07:01]--[2025-10-06 Mo 07:53] =>  0:52
 
 Content")
 
+(fn bullets-of-heading (maybe fixnum))
 (defun bullets-of-heading (offset)
   "Parser: Just skips over the *."
   (multiple-value-bind (res next) (funcall (p:consume1 (lambda (c) (char= c #\*))) offset)
@@ -1155,6 +1172,7 @@ within heading lines to prevent entire subtrees from being exported."
 #+nil
 (p:parse #'priority "[#A]")
 
+(fn text-of-heading (maybe (vector words)))
 (defun text-of-heading (offset)
   (p:fmap (lambda (list) (coerce list 'vector))
           (funcall (p:sep-end (*> +consume-space+
